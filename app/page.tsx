@@ -1,12 +1,17 @@
+'use client';
 import Image from "next/image";
+import Link from "next/link";
+import {useRouter} from "next/navigation"; 
+import { FaSearch } from "react-icons/fa";
 
-export default function Home() {
+
+export  function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
         <Image
           className="dark:invert"
-          src="/next.svg"
+          src="/next-im/next.svg"
           alt="Next.js logo"
           width={100}
           height={20}
@@ -43,7 +48,7 @@ export default function Home() {
           >
             <Image
               className="dark:invert"
-              src="/vercel.svg"
+              src="/next-im/vercel.svg"
               alt="Vercel logomark"
               width={16}
               height={16}
@@ -61,5 +66,54 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function HomePage (){
+  const router =useRouter();
+  return(
+    <section className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
+  <div className="w-full max-w-5xl flex flex-col-reverse md:flex-row items-center justify-between gap-12 px-6 py-20 bg-white dark:bg-black">
+
+    {/* LEFT CONTENT */}
+    <div className="flex flex-col items-center md:items-start text-center md:text-left gap-6">
+      
+      <h1 className="text-3xl md:text-4xl font-semibold leading-tight tracking-tight text-black dark:text-zinc-50 max-w-md">
+        Welcome to Atlas-Atelier
+      </h1>
+
+      <p className="text-base md:text-lg leading-relaxed text-zinc-600 dark:text-zinc-400 max-w-lg">
+        <strong>AtlasAtelier</strong> — Le cerveau de ton atelier.<br /><br />
+
+        L'atelier Neurogreen ne perd plus une seconde à chercher des composants ou à faire des commandes en double.<br /><br />
+
+        - Recherche instantanée : texte IA (Gemma3n locale) ou photo du composant.<br />
+        - Budget maîtrisé : BOM temps réel par projet.<br />
+        - Commandes intelligentes : validation stock obligatoire avant achat.<br /><br />
+
+        Next.js + Raspberry Pi, 100% LAN. Transforme ton atelier en machine de guerre.
+      </p>
+
+      <button
+        onClick={() => router.push("/stock")}
+        className="flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-foreground text-background transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-300 md:w-auto"
+      >
+        <FaSearch size={14} />
+        <span>Search</span>
+      </button>
+
+    </div>
+
+    {/* RIGHT IMAGE */}
+    <div className="flex justify-center md:justify-end w-full md:w-1/2">
+      <img
+        src="https://neurogreen.be/wp-content/uploads/2023/09/photo_2023-09-07_22-31-26.jpg"
+        alt="Neurogreen"
+        className="w-40 h-40 md:w-64 md:h-64 object-cover rounded-full shadow-lg"
+      />
+    </div>
+
+  </div>
+</section>
   );
 }
