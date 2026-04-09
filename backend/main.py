@@ -31,23 +31,12 @@ def get_db():
 #nos endpoints
 @app.post("/composants", response_model=schemas.ComposantResponse)
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
-    # On crée l'objet avec TOUTES les nouvelles colonnes
+    # 1. On prend les données validées par Pydantic et on crée un objet SQLAlchemy
     nouveau_composant = models.Composant(
-        nom=composant.nom,
-        reference=composant.reference,
-        categorie=composant.categorie,
-        prix=composant.prix,
-        emplacement=composant.emplacement,
-        quantite=composant.quantite, # Remplacé "stock" par "quantite"
-        phot_url=composant.phot_url
+        nom=composant.nom, 
+        prix=composant.prix, 
+        stock=composant.stock
     )
-    
-    db.add(nouveau_composant)
-    db.commit()
-    db.refresh(nouveau_composant)
-    
-    return nouveau_composant
-    
     # 2. On l'ajoute à la base de données
     db.add(nouveau_composant)
     db.commit()        # On sauvegarde
