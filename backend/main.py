@@ -11,9 +11,9 @@ app = FastAPI(title="Atlas Atelier API")
 
 #INITIALISATION DE LA DB DEPUIS SCHEMA.SQL
 def init_db():
-    if not os.path.exists("atelier.db"):
+    if not os.path.exists("data/atelier.db"):
         # Si le fichier .db n'existe pas, on le crée en lisant le schema.sql
-        with sqlite3.connect("atelier.db") as conn:
+        with sqlite3.connect("data/atelier.db") as conn:
             with open("schema.sql", "r", encoding="utf-8") as f:
                 conn.executescript(f.read())
         print("Base de données initialisée depuis schema.sql !")
@@ -31,21 +31,37 @@ def get_db():
 #nos endpoints
 @app.post("/composants", response_model=schemas.ComposantResponse)
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
-    # 1. On prend les données validées par Pydantic et on crée un objet SQLAlchemy
+    # On crée l'objet avec TOUTES les nouvelles colonnes
     nouveau_composant = models.Composant(
-        nom=composant.nom, 
-        prix=composant.prix, 
-        stock=composant.stock
+        nom=composant.nom,
+        reference=composant.reference,
+        categorie=composant.categorie,
+        prix=composant.prix,
+        emplacement=composant.emplacement,
+        quantite=composant.quantite, # Remplacé "stock" par "quantite"
+        photo_url=composant.phot_url
     )
-    # 2. On l'ajoute à la base de données
+    
     db.add(nouveau_composant)
-    db.commit()        # On sauvegarde
-    db.refresh(nouveau_composant) # On récupère l'ID généré
-    # 3. On le renvoie au frontend
+    db.commit()
+    db.refresh(nouveau_composant)
+    
     return nouveau_composant
+    
+
+ 
 
 @app.get("/composants", response_model=list[schemas.ComposantResponse])
-def lire_composants(db: Session = Depends(get_db)):
+def read_all_composants(db: Session = Depends(get_db)):
     # Récupère tous les composants dans la table
     composants = db.query(models.Composant).all()
     return composants
+
+@app.get("/composants/{id_composant}", response_model=schemas.ComposantResponse)
+def read_composant(id_composant: int ,db: Session = Depends(get_db)):
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if composant is None:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+    return composant
+
+
