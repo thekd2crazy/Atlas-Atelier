@@ -38,16 +38,15 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
         categorie=composant.categorie,
         prix=composant.prix,
         emplacement=composant.emplacement,
-        quantite=composant.quantite, # Remplacé "stock" par "quantite"
+        quantite=composant.quantite, 
         photo_url=composant.phot_url
     )
     
     db.add(nouveau_composant)
     db.commit()
-    db.refresh(nouveau_composant)
+    db.refresh(nouveau_composant) #On récupère l'ID généré
     
     return nouveau_composant
-    
 
  
 
@@ -64,4 +63,36 @@ def read_composant(id_composant: int ,db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Composant non trouvé")
     return composant
 
+@app.delete("/composants/{id_composant}", response_model=schemas.ComposantResponse)
+def delete_composant(id_composant: int ,db: Session = Depends(get_db)):
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if composant is None:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+    
+    db.delete(composant)
+    db.commit()
+    return composant
 
+
+@app.put("/composants/{id_composant}", response_model=schemas.ComposantResponse)
+# 1. On ajoute "composant_update" pour recevoir les nouvelles données
+def update_composant(id_composant: int, composant_update: schemas.ComposantCreate, db: Session = Depends(get_db)):
+    # 2. On cherche le composant existant
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if composant is None:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+    
+    # 3. On modifie directement ses attributs
+    composant.nom = composant_update.nom
+    composant.reference = composant_update.reference
+    composant.categorie = composant_update.categorie
+    composant.prix = composant_update.prix
+    composant.emplacement = composant_update.emplacement
+    composant.quantite = composant_update.quantite
+    composant.phot_url = composant_update.phot_url
+    
+    # 4. On valide les changements dans la base 
+    db.commit()
+    db.refresh(composant)
+    
+    return composant
