@@ -7,6 +7,8 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    volumes:
+      - ./backend/data:/app/data
     environment:
       - ENVIRONMENT=production
 
