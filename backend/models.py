@@ -10,4 +10,13 @@ class Composant(Base):
     prix = Column(Float)
     emplacement = Column(String)
     quantite = Column(Integer)
-    phot_url = Column(String)
+    photo_url = Column(String)
+
+class Projet(Base):
+    __tablename__ = "projets"
+    id_projet = Column(Integer, primary_key=True, index=True)
+    nom = Column(String, index=True)
+    budget_alloue = Column(Float)
+    budget_consomme = Column(Float)
+    statut = Column(String)
+    

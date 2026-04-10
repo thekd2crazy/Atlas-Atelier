@@ -10,7 +10,7 @@ class ComposantBase(BaseModel):
     emplacement: str
     quantite: int
     # On met phot_url en Optionnel (permet d'envoyer 'null' si on n'a pas de photo)
-    phot_url: Optional[str] = None
+    photo_url: Optional[str] = None
 
 # 2. Le schéma d'ENTRÉE (Ce que le frontend envoie via un POST)
 class ComposantCreate(ComposantBase):
