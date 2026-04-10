@@ -35,7 +35,7 @@ class ProjetBase(BaseModel):
     budget_alloue: Optional[float] = None
    
 
-class ProjetCreate(ComposantBase):
+class ProjetCreate(ProjetBase):
     # On utilise juste "pass" car il hérite exactement de toutes les colonnes 
     # de ComposantBase. Il n'a PAS d'id_composant, car c'est SQLite qui va le créer.
     pass
