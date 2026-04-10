@@ -157,3 +157,17 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     db.commit()
     db.refresh(projet)
     return projet
+
+@app.get("/projets/{id_projet}/budget", response_model=schemas.ProjetBudget)
+def read_projet_budget(id_projet: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    budget = models.Projet(
+        budget_alloue= projet.budget_alloue,
+        budget_consomme= projet.budget_consomme
+    )
+    return budget
+
+@app.get("/projets/{id_projet}/budget", response_model=schemas.Projet)

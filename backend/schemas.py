@@ -45,6 +45,13 @@ class ProjetUpdate(ProjetBase):
     budget_consomme: Optional[float] = None
     statut: Optional[str] = None
 
+class ProjetBudget(BaseModel):
+    budget_alloue: Optional[float] = None
+    budget_consomme: float
+    # Afin de lire la donnée pas le json
+    class Config:
+        from_attributes = True
+
 # Ce que l'API renvoie
 class ProjetResponse(ProjetBase):
     id_projet: int
