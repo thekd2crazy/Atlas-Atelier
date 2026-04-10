@@ -36,6 +36,10 @@ def get_db():
         db.close()
 
 #nos endpoints
+
+
+# Composants
+
 @app.post("/composants", response_model=schemas.ComposantResponse)
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
     # On crée l'objet avec TOUTES les nouvelles colonnes
@@ -104,6 +108,180 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     
     return composant
 
+def get_all_composants():
+    db: Session = SessionLocal()
+    try:
+        return db.query(models.Composant).all()
+    finally:
+        db.close()
+
+def ingest():
+    data = get_all_composants()
+
+    ids = []
+    embeddings = []
+    metadatas = []
+
+    for item in data:
+        
+        image_path = item.photo_url   
+        desc = f"{item.nom} {item.categorie}"  
+
+        emb = (embed_image(image_path) + embed_text(desc)) / 2
+
+        ids.append(str(item.id_composant))  
+        embeddings.append(emb.tolist())
+
+        metadatas.append({
+            "nom": item.nom,
+            "categorie": item.categorie,
+            "emplacement": item.emplacement
+        })
+
+    # Insertion dans ChromaDB
+    collection.add(
+        ids=ids,
+        embeddings=embeddings,
+        metadatas=metadatas
+    )
+
+    print("Ingestion terminée depuis la base de données")
+
+@app.post("/ingestion", status_code=status.HTTP_204_NO_CONTENT)
+def ingestion():
+    ingest()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.post("/recherche/image")
+async def recherche_image(file: UploadFile = File(...)):
+    temp_path = f"temp_{uuid.uuid4()}.jpg"
+
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    emb = embed_image(temp_path)
+
+    results = collection.query(
+        query_embeddings=[emb.tolist()],
+        n_results=5
+    )
+
+    os.remove(temp_path)
+
+    return results["metadatas"]
+# Projets
+
+@app.post("/projets", response_model=schemas.ProjetResponse)
+def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
+    nouveau_projet = models.Projet(
+        nom=projet.nom,
+        budget_alloue=projet.budget_alloue,
+        # On force les valeurs par défaut ici au cas où
+        budget_consomme=0.0, 
+        statut="actif"
+    )
+    db.add(nouveau_projet)
+    db.commit()
+    db.refresh(nouveau_projet)
+    return nouveau_projet
+
+@app.get("/projets", response_model=list[schemas.ProjetResponse])
+def read_all_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).all()
+
+@app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
+def read_projet(id_projet: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    return projet
+
+@app.patch("/projets/{id_projet}/archiver", response_model=schemas.ProjetResponse)
+def archiver_projet(id_projet: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    projet.statut = "archive"
+    db.commit()
+    db.refresh(projet)
+    return projet
+
+@app.put("/projets/{id_projet}", response_model=schemas.ProjetResponse)
+def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # On met à jour les champs
+    projet.nom = projet_update.nom
+    if projet_update.budget_alloue is not None:
+        projet.budget_alloue = projet_update.budget_alloue
+    if projet_update.budget_consomme is not None:
+        projet.budget_consomme = projet_update.budget_consomme
+    if projet_update.statut is not None:
+        projet.statut = projet_update.statut
+        
+    db.commit()
+    db.refresh(projet)
+    return projet
+
+# Projets
+
+@app.post("/projets", response_model=schemas.ProjetResponse)
+def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
+    nouveau_projet = models.Projet(
+        nom=projet.nom,
+        budget_alloue=projet.budget_alloue,
+        # On force les valeurs par défaut ici au cas où
+        budget_consomme=0.0, 
+        statut="actif"
+    )
+    db.add(nouveau_projet)
+    db.commit()
+    db.refresh(nouveau_projet)
+    return nouveau_projet
+
+@app.get("/projets", response_model=list[schemas.ProjetResponse])
+def read_all_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).all()
+
+@app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
+def read_projet(id_projet: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    return projet
+
+@app.patch("/projets/{id_projet}/archiver", response_model=schemas.ProjetResponse)
+def archiver_projet(id_projet: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    projet.statut = "archive"
+    db.commit()
+    db.refresh(projet)
+    return projet
+
+@app.put("/projets/{id_projet}", response_model=schemas.ProjetResponse)
+def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # On met à jour les champs
+    projet.nom = projet_update.nom
+    if projet_update.budget_alloue is not None:
+        projet.budget_alloue = projet_update.budget_alloue
+    if projet_update.budget_consomme is not None:
+        projet.budget_consomme = projet_update.budget_consomme
+    if projet_update.statut is not None:
+        projet.statut = projet_update.statut
+        
+    db.commit()
+    db.refresh(projet)
+    return projet
 def get_all_composants():
     db: Session = SessionLocal()
     try:

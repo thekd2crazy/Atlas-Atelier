@@ -27,3 +27,29 @@ class ComposantResponse(ComposantBase):
     # votre modèle SQLAlchemy (models.Composant).
     class Config:
         from_attributes = True
+
+
+
+class ProjetBase(BaseModel):
+    nom: str
+    budget_alloue: Optional[float] = None
+   
+
+class ProjetCreate(ProjetBase):
+    # On utilise juste "pass" car il hérite exactement de toutes les colonnes 
+    # de ComposantBase. Il n'a PAS d'id_composant, car c'est SQLite qui va le créer.
+    pass
+
+# Ce que l'utilisateur envoie pour modifier un projet existant (PUT)
+class ProjetUpdate(ProjetBase):
+    budget_consomme: Optional[float] = None
+    statut: Optional[str] = None
+
+# Ce que l'API renvoie
+class ProjetResponse(ProjetBase):
+    id_projet: int
+    budget_consomme: float
+    statut: str
+
+    class Config:
+        from_attributes = True
