@@ -4,6 +4,8 @@ FROM python:3.11-slim
 # Définir le répertoire de travail
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y git
+
 # Copier les dépendances en premier pour optimiser le cache Docker
 COPY requirements.txt .
 

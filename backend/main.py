@@ -1,13 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response, status , UploadFile, File
 from sqlalchemy.orm import Session
 import sqlite3
 import os
+import chromadb
+from clip_utils import embed_image , embed_text
 
 from database import SessionLocal, engine
 import models
 import schemas 
 
+import shutil
+import uuid
+
 app = FastAPI(title="Atlas Atelier API")
+client = chromadb.PersistentClient(path="./data/chromadb")
+collection = client.get_or_create_collection(name="components")
 
 #INITIALISATION DE LA DB DEPUIS SCHEMA.SQL
 def init_db():
@@ -96,3 +103,65 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     db.refresh(composant)
     
     return composant
+
+def get_all_composants():
+    db: Session = SessionLocal()
+    try:
+        return db.query(models.Composant).all()
+    finally:
+        db.close()
+
+def ingest():
+    data = get_all_composants()
+
+    ids = []
+    embeddings = []
+    metadatas = []
+
+    for item in data:
+        
+        image_path = item.photo_url   
+        desc = f"{item.nom} {item.categorie}"  
+
+        emb = (embed_image(image_path) + embed_text(desc)) / 2
+
+        ids.append(str(item.id_composant))  
+        embeddings.append(emb.tolist())
+
+        metadatas.append({
+            "nom": item.nom,
+            "categorie": item.categorie,
+            "emplacement": item.emplacement
+        })
+
+    # Insertion dans ChromaDB
+    collection.add(
+        ids=ids,
+        embeddings=embeddings,
+        metadatas=metadatas
+    )
+
+    print("Ingestion terminée depuis la base de données")
+
+@app.post("/ingestion", status_code=status.HTTP_204_NO_CONTENT)
+def ingestion():
+    ingest()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.post("/recherche/image")
+async def recherche_image(file: UploadFile = File(...)):
+    temp_path = f"temp_{uuid.uuid4()}.jpg"
+
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    emb = embed_image(temp_path)
+
+    results = collection.query(
+        query_embeddings=[emb.tolist()],
+        n_results=5
+    )
+
+    os.remove(temp_path)
+
+    return results["metadatas"]

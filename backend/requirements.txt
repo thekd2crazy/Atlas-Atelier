@@ -1,3 +1,12 @@
 fastapi
 uvicorn[standard]
 sqlalchemy==1.4.32
+
+torch
+torchvision
+git+https://github.com/openai/CLIP.git
+chromadb
+python-multipart
+pillow
+numpy
+sqlite-utils
