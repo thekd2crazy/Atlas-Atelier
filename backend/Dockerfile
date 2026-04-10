@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y git
 COPY requirements.txt .
 
 # Installer les dépendances
+# Installer PyTorch CPU AVANT le reste
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 # --no-cache-dir permet de ne pas stocker les fichiers d'installation et gagner de la place
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import sqlite3
 import os
 import chromadb
-from clip_utils import embed_image , embed_text
+from clip_utils import embed_image , embed_text, embed_image_url
 
 from database import SessionLocal, engine
 import models
@@ -301,7 +301,7 @@ def ingest():
         image_path = item.photo_url   
         desc = f"{item.nom} {item.categorie}"  
 
-        emb = (embed_image(image_path) + embed_text(desc)) / 2
+        emb = (embed_image_url(image_path) + embed_text(desc)) / 2
 
         ids.append(str(item.id_composant))  
         embeddings.append(emb.tolist())
