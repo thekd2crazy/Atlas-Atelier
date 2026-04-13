@@ -60,3 +60,18 @@ class ProjetResponse(ProjetBase):
 
     class Config:
         from_attributes = True
+
+class BOMBase(BaseModel):
+    composant_id: int
+    qte_requise: int
+
+class BOMCreate(BOMBase):
+    pass
+
+# Ce que l'API renvoie (inclut l'ID de la ligne et l'ID du projet)
+class BOMResponse(BOMBase):
+    projet_id: int
+    cout_estime: float
+
+    class Config:
+        from_attributes = True

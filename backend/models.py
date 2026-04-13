@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from database import Base
 
 class Composant(Base):
@@ -20,3 +20,16 @@ class Projet(Base):
     budget_consomme = Column(Float)
     statut = Column(String)
     
+class BOM(Base):
+    __tablename__ = "bom_lignes"
+    
+    # On relie cette ligne à un Projet précis
+    projet_id = Column(Integer, ForeignKey("projets.id_projet"), primary_key=True)
+    
+    # On relie cette ligne à un Composant précis
+    composant_id = Column(Integer, ForeignKey("composants.id_composant"), primary_key=True)
+    
+    # Combien de fois ce composant est utilisé dans ce projet
+    qte_requise = Column(Integer)
+
+    cout_estime = Column(Float)

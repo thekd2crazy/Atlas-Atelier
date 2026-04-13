@@ -163,11 +163,52 @@ def read_projet_budget(id_projet: int, db: Session = Depends(get_db)):
     projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
-    
-    budget = models.Projet(
-        budget_alloue= projet.budget_alloue,
-        budget_consomme= projet.budget_consomme
-    )
-    return budget
+    return projet
 
-@app.get("/projets/{id_projet}/budget", response_model=schemas.Projet)
+@app.get("/projets/{id_projet}/bom", response_model=list[schemas.BOMResponse])
+def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
+    # 1. On s'assure que le projet existe bien
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # 2. On récupère toutes les lignes de la nomenclature liées à cet ID
+    nomenclature = db.query(models.BOM).filter(models.BOM.projet_id == id_projet).all()
+    
+    return nomenclature
+
+@app.post("/projets/{id_projet}/bom", response_model=schemas.BOMResponse)
+def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Session = Depends(get_db)):
+    # 1. Vérifications
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+        
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == bom_in.composant_id).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    # 2. Calcul du coût de cette ligne
+    cout_ligne = composant.prix * bom_in.qte_requise
+
+    # 3. Création de la ligne BOM
+    nouvelle_ligne = models.BOM(
+        projet_id=id_projet,
+        composant_id=bom_in.composant_id,
+        qte_requise=bom_in.qte_requise,
+        cout_estime=cout_ligne
+    )
+    
+    # 4. MISE À JOUR AUTOMATIQUE DU BUDGET DU PROJET
+    projet.budget_consomme += cout_ligne
+    
+    # 5 Réduction du stock
+    if composant.quantite < bom_in.qte_requise:
+        raise HTTPException(status_code=400, detail="Stock insuffisant")
+    composant.quantite -= bom_in.qte_requise
+
+    db.add(nouvelle_ligne)
+    db.commit()
+    db.refresh(nouvelle_ligne)
+    
+    return nouvelle_ligne
