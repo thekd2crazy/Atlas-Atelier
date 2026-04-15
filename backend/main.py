@@ -82,6 +82,8 @@ def delete_composant(id_composant: int ,db: Session = Depends(get_db)):
     
     db.delete(composant)
     db.commit()
+
+    collection.delete(ids=[id_composant])
     return composant
 
 
@@ -105,6 +107,21 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     # 4. On valide les changements dans la base 
     db.commit()
     db.refresh(composant)
+
+    #5. Modification dans chromaDB
+    image_path = composant.photo_url   
+    desc = f"{composant.nom} {composant.categorie}"  
+
+    emb = (embed_image_url(image_path) + embed_text(desc)) / 2
+    collection.update(
+        ids=[id_composant],
+        embeddings=[emb.tolist()],
+        metadatas=[{
+            "nom": composant.nom,
+            "categorie": composant.categorie,
+            "emplacement": composant.emplacement
+    }]
+)
     
     return composant
 
@@ -300,6 +317,12 @@ def ingest():
 
     for item in data:
         
+        existing = collection.get(ids=[item.id_composant])
+
+        if len(existing["ids"]) > 0:
+            print(f"Déjà indexé: {item.id_composant}")
+            continue
+
         image_path = item.photo_url   
         desc = f"{item.nom} {item.categorie}"  
 
