@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 # 1. Le schéma de base (Les colonnes communes)
 class ComposantBase(BaseModel):
@@ -75,3 +75,16 @@ class BOMResponse(BOMBase):
 
     class Config:
         from_attributes = True
+
+# Ce que l'API renvoie après avoir lu le fichier CSV
+class CSVLigneApercu(BaseModel):
+    reference: str
+    nom: str
+    prix: float
+    quantite: int
+    statut: str  # "NOUVEAU" (à créer) ou "EXISTANT" (à mettre à jour)
+
+# Ce que le frontend envoie pour valider l'import
+class CSVImportValidation(BaseModel):
+    lignes: List[CSVLigneApercu] # La liste des composants validés par l'utilisateur
+    fournisseur: str = "Inconnu" # Ex: "Mouser", "Farnell"
