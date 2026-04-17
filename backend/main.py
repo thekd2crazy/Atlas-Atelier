@@ -4,6 +4,8 @@ import sqlite3
 import os
 import chromadb
 from clip_utils import embed_image , embed_text, embed_image_url
+import csv
+import io
 
 from database import SessionLocal, engine
 import models
@@ -43,6 +45,12 @@ def get_db():
 @app.post("/composants", response_model=schemas.ComposantResponse)
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
     # On crée l'objet avec TOUTES les nouvelles colonnes
+
+    existant = db.query(models.Composant).filter().first()
+
+    if existant:
+        raise HTTPException(status_code=400, detail="Référence déjà existante")
+
     nouveau_composant = models.Composant(
         nom=composant.nom,
         reference=composant.reference,
@@ -286,6 +294,8 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     )
     
     # 4. MISE À JOUR AUTOMATIQUE DU BUDGET DU PROJET
+    if projet.budget_alloue is not None and (projet.budget_consomme + cout_ligne > projet.budget_alloue):
+        raise HTTPException(status_code=400, detail="Budget dépassé")
     projet.budget_consomme += cout_ligne
     
     # 5 Réduction du stock
@@ -368,3 +378,46 @@ async def recherche_image(file: UploadFile = File(...)):
     os.remove(temp_path)
 
     return results["metadatas"]
+
+# --- IMPORT CSV ---
+
+@app.post("/composants/import/apercu", response_model=list[schemas.CSVLigneApercu])
+async def upload_csv_apercu(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    content = await file.read()
+    text = content.decode("utf-8", errors="ignore")
+    reader = csv.DictReader(io.StringIO(text), delimiter=';')
+    
+    apercu = []
+    for row in reader:
+        ref = row.get("Reference") or row.get("Mouser Part No") or "SANS_REF"
+        nom = row.get("Description") or row.get("Nom") or "Inconnu"
+        try:
+            prix = float(str(row.get("Prix", "0")).replace(',', '.').replace('€', '').strip() or 0)
+        except:
+            prix = 0.0
+        try:
+            qte = int(row.get("Quantite") or row.get("Qty", 0))
+        except:
+            qte = 0
+
+        existant = db.query(models.Composant).filter(models.Composant.reference == ref).first()
+        apercu.append(schemas.CSVLigneApercu(
+            reference=ref, nom=nom, prix=prix, quantite=qte,
+            statut="EXISTANT" if existant else "NOUVEAU"
+        ))
+    return apercu
+
+@app.post("/composants/import/valider")
+def valider_import(donnees: schemas.CSVImportValidation, db: Session = Depends(get_db)):
+    for ligne in donnees.lignes:
+        comp = db.query(models.Composant).filter(models.Composant.reference == ligne.reference).first()
+        if comp:
+            comp.quantite += ligne.quantite
+        else:
+            nouveau = models.Composant(
+                nom=ligne.nom, reference=ligne.reference, prix=ligne.prix,
+                quantite=ligne.quantite, categorie="Import", emplacement="Bureau"
+            )
+            db.add(nouveau)
+    db.commit()
+    return {"status": "success", "message": "Importation terminée"}
