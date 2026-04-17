@@ -5,7 +5,7 @@ class Composant(Base):
     __tablename__ = "composants"
     id_composant = Column(Integer, primary_key=True, index=True)
     nom = Column(String, index=True)
-    reference = Column(String)
+    reference = Column(String, unique=True, index=True)
     categorie = Column(String)
     prix = Column(Float)
     emplacement = Column(String)
