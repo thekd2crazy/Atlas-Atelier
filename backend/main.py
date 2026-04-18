@@ -46,7 +46,7 @@ def get_db():
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
     # On crée l'objet avec TOUTES les nouvelles colonnes
 
-    existant = db.query(models.Composant).filter().first()
+    existant = db.query(models.Composant).filter(models.Composant.reference == composant.reference).first()
 
     if existant:
         existant.quantite += composant.quantite
