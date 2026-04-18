@@ -49,7 +49,11 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
     existant = db.query(models.Composant).filter().first()
 
     if existant:
-        raise HTTPException(status_code=400, detail="Référence déjà existante")
+        existant.quantite += composant.quantite
+        db.commit()
+        db.refresh(existant)
+
+        return existant
 
     nouveau_composant = models.Composant(
         nom=composant.nom,
