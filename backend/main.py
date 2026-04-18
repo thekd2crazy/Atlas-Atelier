@@ -46,10 +46,14 @@ def get_db():
 def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(get_db)):
     # On crée l'objet avec TOUTES les nouvelles colonnes
 
-    existant = db.query(models.Composant).filter().first()
+    existant = db.query(models.Composant).filter(models.Composant.reference == composant.reference).first()
 
     if existant:
-        raise HTTPException(status_code=400, detail="Référence déjà existante")
+        existant.quantite += composant.quantite
+        db.commit()
+        db.refresh(existant)
+
+        return existant
 
     nouveau_composant = models.Composant(
         nom=composant.nom,
