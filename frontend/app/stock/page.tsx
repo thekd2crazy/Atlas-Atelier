@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Box, ClipboardList, Cpu, CpuIcon, Filter, MapPin, Package, Plus, Search, User } from "lucide-react";
+import { Box, ClipboardList, Cpu, CpuIcon, Filter, MapPin, Package, Plus, Search, User } from "lucide-react"  
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
@@ -11,9 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@/components/ui/table";
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
+import { Button } from "@/components/ui/button";
+import { getAllComponents } from "../api/stock/id/route";
+
 
 type component = {
-    id : UUID
+    id : Int16Array
     nom : string
     categorie : string
     reference : string 
@@ -21,16 +23,48 @@ type component = {
     quantite : string
     prix : string
     photo_url : string 
-    nombre : string
 }
 
+type ComposantCreate = {
+  nom: string;
+  reference: string;
+  categorie: string;
+  prix: number;
+  emplacement: string;
+  quantite: number;
+  photo_url: string;
+};
+
+
+
+
 export default function StockPage () {
-    const [components, setComponents] = useState<component[]>([])
-    const [searchTerm, setSearchTerm] = useState("")
-    const [filterStatus, setFilterStatus] = useState<string>("all")
+    const router = useRouter();
+    const [components, setComponents] = useState<component[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [loading, setLoading] = useState(true);
+    // Chargement de donner qui s'effectue qu'au chargement de la page  
+    useEffect(() => {
+        // definir la fonction async 
+        async function Loadcomponent() {
+            try {
+                const data = await getAllComponents();
+                setComponents(data);
+            }
+            catch (error){
+                console.error("Erreur lors du chargement :", error);
+            }
+            finally {
+                setLoading(false);
+            }
+        }
+        Loadcomponent();
+        router.push("/stock"); // ← vous fait rediriger vers "/stock" pendant le rendu !
+        } ,[router])
+             
 
-
-    // Formulaire de création de client
+    // Formulaire de création de composant
     const [newComponent, setNewComponent] = useState({
         categorie: "",
         reference: "",
@@ -60,14 +94,14 @@ export default function StockPage () {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Clients</h1>
+                    <h1 className="text-3xl font-bold">Composants</h1>
                     <p className="text-muted-foreground mt-1">
-                    Gérez vos clients et leurs commandes
+                    Gérez stock de Composants
                     </p>
                 </div>
                 <Button >
                     <Plus className="h-4 w-4 mr-2" />
-                    Créer un client
+                    Créer un Composant
                 </Button>
             </div>
 
@@ -150,83 +184,76 @@ export default function StockPage () {
                             </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {components.map((component) => {
-                                    return (
-                                    <TableRow 
-                                        key={component.id}
-                                        className="cursor-pointer hover:bg-gray-50 transition-colors"
-                                        
-                                    >
-                                        <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4 text-muted-foreground" />
-                                            <div>
-                                                <div className="font-medium">{component.nom}</div>
-                                            </div>
-                                        </div>
-                                        </TableCell>
+                                {
 
-                                        <TableCell>
-                                        
-                                            <div className="flex items-center gap-1 text-sm">
-                                            <Box className="h-3 w-3 text-muted-foreground" />
-                                            {component.reference}
-                                            </div>
-                                        
-                                        </TableCell>
+                                    components.map((component) => {
 
-                                        <TableCell>
-                                        
-                                            <div className="flex items-center gap-1 text-sm">
-                                            <Box className="h-3 w-3 text-muted-foreground" />
-                                            {component.categorie}
-                                            </div>
-                                        
-                                        </TableCell>
-                                        <TableCell>
-                                            {component.emplacement ? (
-                                                <div className="flex items-center gap-1 text-sm">
-                                                < MapPin className="h-3 w-3 text-muted-foreground" />
-                                                {component.emplacement}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {component.quantite ? (
-                                                <div className="flex items-center gap-1 text-sm">
-                                                < MapPin className="h-3 w-3 text-muted-foreground" />
-                                                {component.emplacement}
-                                                </div>
-                                            ): (
-                                                <span className="text-sm text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
+                                            return (
+                                                <TableRow
+                                                    key={String(component.id)|| crypto.randomUUID()}
+                                                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    >
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                        <User className="h-4 w-4 text-muted-foreground" />
+                                                        <div className="font-medium">{component.nom}</div>
+                                                        </div>
+                                                    </TableCell>
 
-                                        <TableCell>
-                                            {component.prix ? (
-                                                <div className="flex items-center gap-1 text-sm">
-                                                < MapPin className="h-3 w-3 text-muted-foreground" />
-                                                {component.prix}
-                                                </div>
-                                            ): (
-                                                <span className="text-sm text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {component.photo_url ? (
-                                                <div className="flex items-center gap-1 text-sm">
-                                                < MapPin className="h-3 w-3 text-muted-foreground" />
-                                                {component.photo_url}
-                                                </div>
-                                            ): (
-                                                <span className="text-sm text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
-                                        
-                                    </TableRow>
-                                    )
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                        <Box className="h-3 w-3 text-muted-foreground" />
+                                                        {component.reference}
+                                                        </div>
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                        <Box className="h-3 w-3 text-muted-foreground" />
+                                                        {component.categorie}
+                                                        </div>
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        {component.emplacement ? (
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                                                            {component.emplacement}
+                                                        </div>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        {component.quantite !== undefined ? (
+                                                        <span>{component.quantite}</span>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        {component.prix !== undefined ? (
+                                                        <span>{component.prix} €</span>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        {component.photo_url ? (
+                                                        <img
+                                                            src={component.photo_url}
+                                                            alt={component.nom}
+                                                            className="h-10 w-10 object-cover rounded"
+                                                        />
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
                                 })}    
                             </TableBody>
                         </Table>
