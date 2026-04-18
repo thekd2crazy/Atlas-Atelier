@@ -13,6 +13,7 @@ import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { getAllComponents } from "../api/stock/id/route";
 
+
 type component = {
     id : Int16Array
     nom : string
@@ -34,14 +35,36 @@ type ComposantCreate = {
   photo_url: string;
 };
 
-export default async function StockPage () {
-    const [components, setComponents] = useState<component[]>([])
-    const [searchTerm, setSearchTerm] = useState("")
-    const [filterStatus, setFilterStatus] = useState<string>("all")
 
-    const Components = await getAllComponents();
 
-    // Formulaire de création de client
+
+export default function StockPage () {
+    const router = useRouter();
+    const [components, setComponents] = useState<component[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [loading, setLoading] = useState(true);
+    // Chargement de donner qui s'effectue qu'au chargement de la page  
+    useEffect(() => {
+        // definir la fonction async 
+        async function Loadcomponent() {
+            try {
+                const data = await getAllComponents();
+                setComponents(data);
+            }
+            catch (error){
+                console.error("Erreur lors du chargement :", error);
+            }
+            finally {
+                setLoading(false);
+            }
+        }
+        Loadcomponent();
+        router.push("/stock"); // ← vous fait rediriger vers "/stock" pendant le rendu !
+        } ,[router])
+             
+
+    // Formulaire de création de composant
     const [newComponent, setNewComponent] = useState({
         categorie: "",
         reference: "",
@@ -162,72 +185,74 @@ export default async function StockPage () {
                             </TableHeader>
                             <TableBody>
                                 {
-                                    Components.map((component) => {
+
+                                    components.map((component) => {
+
                                             return (
-                                            <TableRow
-                                                key={String(component.id)}
-                                                className="cursor-pointer hover:bg-gray-50 transition-colors"
-                                                >
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                    <User className="h-4 w-4 text-muted-foreground" />
-                                                    <div className="font-medium">{component.nom}</div>
-                                                    </div>
-                                                </TableCell>
+                                                <TableRow
+                                                    key={String(component.id)|| crypto.randomUUID()}
+                                                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    >
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                        <User className="h-4 w-4 text-muted-foreground" />
+                                                        <div className="font-medium">{component.nom}</div>
+                                                        </div>
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                    <Box className="h-3 w-3 text-muted-foreground" />
-                                                    {component.reference}
-                                                    </div>
-                                                </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                        <Box className="h-3 w-3 text-muted-foreground" />
+                                                        {component.reference}
+                                                        </div>
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                    <Box className="h-3 w-3 text-muted-foreground" />
-                                                    {component.categorie}
-                                                    </div>
-                                                </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                        <Box className="h-3 w-3 text-muted-foreground" />
+                                                        {component.categorie}
+                                                        </div>
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    {component.emplacement ? (
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                                                        {component.emplacement}
-                                                    </div>
-                                                    ) : (
-                                                    "-"
-                                                    )}
-                                                </TableCell>
+                                                    <TableCell>
+                                                        {component.emplacement ? (
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                                                            {component.emplacement}
+                                                        </div>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    {component.quantite !== undefined ? (
-                                                    <span>{component.quantite}</span>
-                                                    ) : (
-                                                    "-"
-                                                    )}
-                                                </TableCell>
+                                                    <TableCell>
+                                                        {component.quantite !== undefined ? (
+                                                        <span>{component.quantite}</span>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    {component.prix !== undefined ? (
-                                                    <span>{component.prix} €</span>
-                                                    ) : (
-                                                    "-"
-                                                    )}
-                                                </TableCell>
+                                                    <TableCell>
+                                                        {component.prix !== undefined ? (
+                                                        <span>{component.prix} €</span>
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
 
-                                                <TableCell>
-                                                    {component.photo_url ? (
-                                                    <img
-                                                        src={component.photo_url}
-                                                        alt={component.nom}
-                                                        className="h-10 w-10 object-cover rounded"
-                                                    />
-                                                    ) : (
-                                                    "-"
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
+                                                    <TableCell>
+                                                        {component.photo_url ? (
+                                                        <img
+                                                            src={component.photo_url}
+                                                            alt={component.nom}
+                                                            className="h-10 w-10 object-cover rounded"
+                                                        />
+                                                        ) : (
+                                                        "-"
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
                                             )
                                 })}    
                             </TableBody>

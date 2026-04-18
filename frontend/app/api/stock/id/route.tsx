@@ -32,7 +32,9 @@ export async function AddComponant(data: ComposantCreate) {
 }
 
 export async function getAllComponents() : Promise<component[]>  {
-    const response = await fetch("http://192.168.1.34:8000/composants" );
+    const response = await fetch("http://192.168.1.34:8000/composants", {
+            cache: 'no-store',
+        });
     
     return await response.json();
 }
