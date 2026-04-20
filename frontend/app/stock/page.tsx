@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Box, ClipboardList, Cpu, CpuIcon, Filter, MapPin, Package, Plus, Search, User } from "lucide-react"  
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,19 +10,8 @@ import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
-import { getAllComponents } from "../api/stock/id/route";
+import { getAllComponents, type Composant } from "@/lib/stock-api";
 
-
-type component = {
-    id : Int16Array
-    nom : string
-    categorie : string
-    reference : string 
-    emplacement : string 
-    quantite : string
-    prix : string
-    photo_url : string 
-}
 
 type ComposantCreate = {
   nom: string;
@@ -39,8 +27,7 @@ type ComposantCreate = {
 
 
 export default function StockPage () {
-    const router = useRouter();
-    const [components, setComponents] = useState<component[]>([]);
+    const [components, setComponents] = useState<Composant[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [loading, setLoading] = useState(true);
@@ -60,8 +47,7 @@ export default function StockPage () {
             }
         }
         Loadcomponent();
-        router.push("/stock"); // ← vous fait rediriger vers "/stock" pendant le rendu !
-        } ,[router])
+        } ,[])
              
 
     // Formulaire de création de composant
@@ -190,7 +176,7 @@ export default function StockPage () {
 
                                             return (
                                                 <TableRow
-                                                    key={String(component.id)|| crypto.randomUUID()}
+                                                    key={String(component.id_composant) || crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>
