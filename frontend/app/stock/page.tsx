@@ -11,12 +11,15 @@ import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import { Composant, ComposantCreate } from "@/types/type-composant";
 import { AddComposant } from "@/lib/stock-api";
 import { NextResponse } from "next/server";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+=======
+>>>>>>> d59eb42bbc1c3b2a069fb5666dc3e5005459a5aa
 
 
 
@@ -47,7 +50,11 @@ export default function StockPage () {
         setLoading(true);
         const res = await fetch('/api/stock'); // Appel API correct
         if (!res.ok) throw new Error('Erreur API');
+<<<<<<< HEAD
         const data: Composant[] = await res.json();
+=======
+        const data: component[] = await res.json();
+>>>>>>> d59eb42bbc1c3b2a069fb5666dc3e5005459a5aa
         setComponents(data);
       } catch (error) {
 
@@ -226,7 +233,11 @@ export default function StockPage () {
 
                                             return (
                                                 <TableRow
+<<<<<<< HEAD
                                                     key={c.id|| crypto.randomUUID()}
+=======
+                                                    key={component.id|| crypto.randomUUID()}
+>>>>>>> d59eb42bbc1c3b2a069fb5666dc3e5005459a5aa
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>

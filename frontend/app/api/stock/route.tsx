@@ -1,13 +1,21 @@
+<<<<<<< HEAD
 import { NextResponse , NextRequest} from 'next/server';
 import { getAllComposants } from '@/lib/stock-api';
 import { Composant, ComposantCreate, ComposantUpdate } from '@/types/type-composant';
 import { error } from 'console';
 
 const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
+=======
+import { NextResponse } from 'next/server';
+
+// Vos imports pour component/DB
+import { getAllComponants, type component } from '@/lib/stock-api';
+>>>>>>> d59eb42bbc1c3b2a069fb5666dc3e5005459a5aa
 
 
 
 export async function GET() {
+<<<<<<< HEAD
   const components: Composant[] = await getAllComposants(); // Votre logique
   return NextResponse.json(components); // Toujours retourner Response !
 }
@@ -45,3 +53,8 @@ export async function POST(request: NextRequest) {
 
 
 
+=======
+  const components: component[] = await getAllComponants(); // Votre logique
+  return NextResponse.json(components); // Toujours retourner Response !
+}
+>>>>>>> d59eb42bbc1c3b2a069fb5666dc3e5005459a5aa
