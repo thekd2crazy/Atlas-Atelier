@@ -8,8 +8,8 @@ type ComposantCreate = {
   photo_url: string;
 };
 
-type component = {
-    id : Int16Array
+export type component = {
+    id : number
     nom : string
     categorie : string
     reference : string 
@@ -19,8 +19,10 @@ type component = {
     photo_url : string 
 }
 
+const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
+
 export async function AddComponant(data: ComposantCreate) {
-  const response = await fetch("http://192.168.1.34:8000/composants", {
+  const response = await fetch(`${API_BASE_URL}/composants`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -31,8 +33,8 @@ export async function AddComponant(data: ComposantCreate) {
   return await response.json();
 }
 
-export async function getAllComponents() : Promise<component[]>  {
-    const response = await fetch("http://192.168.1.34:8000/composants", {
+export async function getAllComponants() : Promise<component[]>  {
+    const response = await fetch(`${API_BASE_URL}/composants`, {
             cache: 'no-store',
         });
     
