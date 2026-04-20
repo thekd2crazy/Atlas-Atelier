@@ -11,11 +11,11 @@ import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
-import { getAllComponents } from "../api/stock/id/route";
+
 
 
 type component = {
-    id : Int16Array
+    id : number
     nom : string
     categorie : string
     reference : string 
@@ -46,22 +46,27 @@ export default function StockPage () {
     const [loading, setLoading] = useState(true);
     // Chargement de donner qui s'effectue qu'au chargement de la page  
     useEffect(() => {
-        // definir la fonction async 
-        async function Loadcomponent() {
-            try {
-                const data = await getAllComponents();
-                setComponents(data);
-            }
-            catch (error){
-                console.error("Erreur lors du chargement :", error);
-            }
-            finally {
-                setLoading(false);
-            }
+    async function loadComponents() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/stock'); // Appel API correct
+        if (!res.ok) throw new Error('Erreur API');
+        const data: component[] = await res.json();
+        setComponents(data);
+      } catch (error) {
+
+        console.error("Erreur lors du chargement :", error);
+
+      } finally {
+
+        setLoading(false);
+      
         }
-        Loadcomponent();
-        router.push("/stock"); // ← vous fait rediriger vers "/stock" pendant le rendu !
-        } ,[router])
+    }
+
+    loadComponents();
+    
+  }, []);
              
 
     // Formulaire de création de composant
@@ -190,7 +195,7 @@ export default function StockPage () {
 
                                             return (
                                                 <TableRow
-                                                    key={String(component.id)|| crypto.randomUUID()}
+                                                    key={component.id|| crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>
