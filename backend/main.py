@@ -50,6 +50,8 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
 
     if existant:
         existant.quantite += composant.quantite
+        if composant.description is not None:
+            existant.description = composant.description
         db.commit()
         db.refresh(existant)
 
@@ -62,7 +64,8 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
         prix=composant.prix,
         emplacement=composant.emplacement,
         quantite=composant.quantite, 
-        photo_url=composant.photo_url
+        photo_url=composant.photo_url,
+        description=composant.description
     )
     
     db.add(nouveau_composant)
@@ -115,6 +118,7 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     composant.emplacement = composant_update.emplacement
     composant.quantite = composant_update.quantite
     composant.photo_url = composant_update.photo_url
+    composant.description = composant_update.description
     
     # 4. On valide les changements dans la base 
     db.commit()
