@@ -11,11 +11,17 @@ import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
-import { getAllComponents } from "../api/stock/id/route";
+import { Composant, ComposantCreate } from "@/types/type-composant";
+import { AddComposant } from "@/lib/stock-api";
+import { NextResponse } from "next/server";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
 
 
 type component = {
-    id : Int16Array
+    id : number
     nom : string
     categorie : string
     reference : string 
@@ -25,53 +31,83 @@ type component = {
     photo_url : string 
 }
 
-type ComposantCreate = {
-  nom: string;
-  reference: string;
-  categorie: string;
-  prix: number;
-  emplacement: string;
-  quantite: number;
-  photo_url: string;
-};
-
 
 
 
 export default function StockPage () {
     const router = useRouter();
-    const [components, setComponents] = useState<component[]>([]);
+    const [components, setComponents] = useState<Composant[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [loading, setLoading] = useState(true);
     // Chargement de donner qui s'effectue qu'au chargement de la page  
     useEffect(() => {
-        // definir la fonction async 
-        async function Loadcomponent() {
-            try {
-                const data = await getAllComponents();
-                setComponents(data);
-            }
-            catch (error){
-                console.error("Erreur lors du chargement :", error);
-            }
-            finally {
-                setLoading(false);
-            }
+    async function loadComponents() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/stock'); // Appel API correct
+        if (!res.ok) throw new Error('Erreur API');
+        const data: Composant[] = await res.json();
+        setComponents(data);
+      } catch (error) {
+
+        console.error("Erreur lors du chargement :", error);
+
+      } finally {
+
+        setLoading(false);
+      
         }
-        Loadcomponent();
-        router.push("/stock"); // ← vous fait rediriger vers "/stock" pendant le rendu !
-        } ,[router])
+    }
+
+    loadComponents();
+    
+  }, []);
              
 
-    // Formulaire de création de composant
-    const [newComponent, setNewComponent] = useState({
-        categorie: "",
+    // Page Creation de composant.
+    const [open, setOpen] = useState<boolean>(false);
+    const [form, setForm] = useState<ComposantCreate>({
+        nom: "",
         reference: "",
+        categorie: "",
+        prix: 0,
         emplacement: "",
-        quantite: "",
-        description: "",  
-    })
+        quantite: 0,
+        photo_url: "",
+    });
+
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({
+        ...prev,
+        [name]: name === "prix" || name === "quantite" ? Number(value) : value,
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log("Composant à créer :", form);
+        try{
+            // Ici tu peux appeler une API / server action
+            const res = await AddComposant(form);
+            setForm({
+                nom: "",
+                reference: "",
+                categorie: "",
+                prix: 0,
+                emplacement: "",
+                quantite: 0,
+                photo_url: "",
+            }); // reset le formulaire important !
+            setOpen(false);
+        } 
+        catch (error) {
+            return console.log("Creation impossible !")
+        }
+    };
 
     // Configuration des categories 
 
@@ -96,10 +132,10 @@ export default function StockPage () {
                 <div>
                     <h1 className="text-3xl font-bold">Composants</h1>
                     <p className="text-muted-foreground mt-1">
-                    Gérez stock de Composants
+                        Gérez stock de Composants
                     </p>
                 </div>
-                <Button >
+                <Button onClick={() => setOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Créer un Composant
                 </Button>
@@ -186,39 +222,39 @@ export default function StockPage () {
                             <TableBody>
                                 {
 
-                                    components.map((component) => {
+                                    components.map((c) => {
 
                                             return (
                                                 <TableRow
-                                                    key={String(component.id)|| crypto.randomUUID()}
+                                                    key={c.id|| crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                         <User className="h-4 w-4 text-muted-foreground" />
-                                                        <div className="font-medium">{component.nom}</div>
+                                                        <div className="font-medium">{c.nom}</div>
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {component.reference}
+                                                        {c.reference}
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {component.categorie}
+                                                        {c.categorie}
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.emplacement ? (
+                                                        {c.emplacement ? (
                                                         <div className="flex items-center gap-1 text-sm">
                                                             <MapPin className="h-3 w-3 text-muted-foreground" />
-                                                            {component.emplacement}
+                                                            {c.emplacement}
                                                         </div>
                                                         ) : (
                                                         "-"
@@ -226,26 +262,26 @@ export default function StockPage () {
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.quantite !== undefined ? (
-                                                        <span>{component.quantite}</span>
+                                                        {c.quantite !== undefined ? (
+                                                        <span>{c.quantite}</span>
                                                         ) : (
                                                         "-"
                                                         )}
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.prix !== undefined ? (
-                                                        <span>{component.prix} €</span>
+                                                        {c.prix !== undefined ? (
+                                                        <span>{c.prix} €</span>
                                                         ) : (
                                                         "-"
                                                         )}
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.photo_url ? (
+                                                        {c.photo_url ? (
                                                         <img
-                                                            src={component.photo_url}
-                                                            alt={component.nom}
+                                                            src={c.photo_url}
+                                                            alt={c.nom}
                                                             className="h-10 w-10 object-cover rounded"
                                                         />
                                                         ) : (
@@ -259,7 +295,115 @@ export default function StockPage () {
                         </Table>
                     </CardContent>
                 </Card>
+                <Dialog open={open} onOpenChange={setOpen}>
+                    
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Ajouter un composant</DialogTitle>
+                            <DialogDescription>
+                                Remplissez les champs ci‑dessous pour ajouter un nouveau composant.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="nom">Nom</Label>
+                                    <Input
+                                        id="nom"
+                                        name="nom"
+                                        value={form.nom}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="reference">Référence</Label>
+                                    <Input
+                                        id="reference"
+                                        name="reference"
+                                        value={form.reference}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                            </div>
 
+                            <div className="space-y-2">
+                                <Label htmlFor="categorie">Catégorie</Label>
+                                <Input
+                                id="categorie"
+                                name="categorie"
+                                value={form.categorie}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="prix">Prix (€)</Label>
+                                    <Input
+                                        id="prix"
+                                        name="prix"
+                                        type="number"
+                                        step="0.01"
+                                        value={form.prix || ""}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="quantite">Quantité</Label>
+                                    <Input
+                                        id="quantite"
+                                        name="quantite"
+                                        type="number"
+                                        value={form.quantite || ""}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="emplacement">Emplacement</Label>
+                                    <Input
+                                        id="emplacement"
+                                        name="emplacement"
+                                        value={form.emplacement}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="photo_url">URL de la photo</Label>
+                                <Input
+                                id="photo_url"
+                                name="photo_url"
+                                type="url"
+                                value={form.photo_url}
+                                onChange={handleChange}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="description"> Description </Label>
+                                <Textarea
+                                    name="description"
+                                    placeholder="Décrivez le composant..."
+                                    className="resize-vertical min-h-[80px]"  // Tailwind resize
+                                    rows={3}
+                                />
+                            </div>
+
+                            <DialogFooter>
+                                <Button type="submit" className="w-full">
+                                Enregistrer le composant
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
 
             </div>
         </div>
