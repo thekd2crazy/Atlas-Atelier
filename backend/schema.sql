@@ -4,6 +4,7 @@ CREATE TABLE composants (
 id_composant INTEGER PRIMARY KEY AUTOINCREMENT,
 nom TEXT NOT NULL,
     reference TEXT UNIQUE NOT NULL,
+    description TEXT,
     categorie TEXT,
     quantite INTEGER DEFAULT 0,
     emplacement TEXT,

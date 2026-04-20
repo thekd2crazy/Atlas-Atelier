@@ -11,6 +11,7 @@ class Composant(Base):
     emplacement = Column(String)
     quantite = Column(Integer)
     photo_url = Column(String)
+    description = Column(String, nullable=True)
 
 class Projet(Base):
     __tablename__ = "projets"
