@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 # 1. Le schéma de base (Les colonnes communes)
 class ComposantBase(BaseModel):
@@ -34,6 +35,8 @@ class ComposantResponse(ComposantBase):
 class ProjetBase(BaseModel):
     nom: str
     budget_alloue: Optional[float] = None
+    description: Optional[str] = None
+    date: Optional[datetime] = None
    
 
 class ProjetCreate(ProjetBase):
