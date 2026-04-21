@@ -58,9 +58,13 @@ export async function PUT( request: NextRequest, {params} : {params : {id : stri
   }
 }
 
-export async function GET( request: NextRequest, {params} : {params : {id : string}}) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params; // await the params
   
-  const id_composant = parseInt(params.id);
+  const id_composant = parseInt(id);
   // 1. Validater la presence du composant
 
   if (isNaN(id_composant)|| id_composant<= 0 ){
