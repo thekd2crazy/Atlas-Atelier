@@ -209,6 +209,8 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
     nouveau_projet = models.Projet(
         nom=projet.nom,
         budget_alloue=projet.budget_alloue,
+        description=projet.description,
+        date=projet.date,
         # On force les valeurs par défaut ici au cas où
         budget_consomme=0.0, 
         statut="actif"
@@ -252,6 +254,10 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
         projet.budget_alloue = projet_update.budget_alloue
     if projet_update.budget_consomme is not None:
         projet.budget_consomme = projet_update.budget_consomme
+    if projet_update.description is not None:
+        projet.description = projet_update.description
+    if projet_update.date is not None:
+        projet.date = projet_update.date
     if projet_update.statut is not None:
         projet.statut = projet_update.statut
         

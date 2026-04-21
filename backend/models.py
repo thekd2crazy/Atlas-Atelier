@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from database import Base
 
 class Composant(Base):
@@ -19,6 +19,8 @@ class Projet(Base):
     nom = Column(String, index=True)
     budget_alloue = Column(Float)
     budget_consomme = Column(Float)
+    description = Column(String, nullable=True)
+    date = Column(DateTime, nullable=True)
     statut = Column(String)
     
 class BOM(Base):
