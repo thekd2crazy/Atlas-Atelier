@@ -37,6 +37,12 @@ def get_db():
     finally:
         db.close()
 
+def projet_modif_validation(projet):
+    if projet.statut == "archive":
+        raise HTTPException(status_code=409, detail="Les projets archivés sont non modifiables (Lecture seule)")
+    
+    return
+
 #nos endpoints
 
 
@@ -248,6 +254,8 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
+    projet_modif_validation(projet)
+    
     # On met à jour les champs
     projet.nom = projet_update.nom
     if projet_update.budget_alloue is not None:
@@ -291,6 +299,9 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
         
     composant = db.query(models.Composant).filter(models.Composant.id_composant == bom_in.composant_id).first()
     if not composant:
