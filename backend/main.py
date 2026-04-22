@@ -37,6 +37,12 @@ def get_db():
     finally:
         db.close()
 
+def projet_modif_validation(projet):
+    if projet.statut == "archive":
+        raise HTTPException(status_code=409, detail="Les projets archivés sont non modifiables (Lecture seule)")
+    
+    return
+
 #nos endpoints
 
 
@@ -98,7 +104,7 @@ def delete_composant(id_composant: int ,db: Session = Depends(get_db)):
     db.delete(composant)
     db.commit()
 
-    collection.delete(ids=[id_composant])
+    collection.delete(ids=[str(id_composant)])
     return composant
 
 
@@ -125,83 +131,22 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     db.refresh(composant)
 
     #5. Modification dans chromaDB
-    image_path = composant.photo_url   
-    desc = f"{composant.nom} {composant.categorie}"  
+    image_path = composant.photo_url
+    desc = f"{composant.nom} {composant.categorie}"
 
     emb = (embed_image_url(image_path) + embed_text(desc)) / 2
-    collection.update(
-        ids=[id_composant],
+    collection.upsert(
+        ids=[str(id_composant)],
         embeddings=[emb.tolist()],
         metadatas=[{
             "nom": composant.nom,
             "categorie": composant.categorie,
             "emplacement": composant.emplacement
-    }]
-)
+        }]
+    )
     
     return composant
 
-def get_all_composants():
-    db: Session = SessionLocal()
-    try:
-        return db.query(models.Composant).all()
-    finally:
-        db.close()
-
-def ingest():
-    data = get_all_composants()
-
-    ids = []
-    embeddings = []
-    metadatas = []
-
-    for item in data:
-        
-        image_path = item.photo_url   
-        desc = f"{item.nom} {item.categorie}"  
-
-        emb = (embed_image(image_path) + embed_text(desc)) / 2
-
-        ids.append(str(item.id_composant))  
-        embeddings.append(emb.tolist())
-
-        metadatas.append({
-            "nom": item.nom,
-            "categorie": item.categorie,
-            "emplacement": item.emplacement
-        })
-
-    # Insertion dans ChromaDB
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        metadatas=metadatas
-    )
-
-    print("Ingestion terminée depuis la base de données")
-
-@app.post("/ingestion", status_code=status.HTTP_204_NO_CONTENT)
-def ingestion():
-    ingest()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@app.post("/recherche/image")
-async def recherche_image(file: UploadFile = File(...)):
-    temp_path = f"temp_{uuid.uuid4()}.jpg"
-
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    emb = embed_image(temp_path)
-
-    results = collection.query(
-        query_embeddings=[emb.tolist()],
-        n_results=5
-    )
-
-    os.remove(temp_path)
-
-    return results["metadatas"]
 # Projets
 
 @app.post("/projets", response_model=schemas.ProjetResponse)
@@ -248,6 +193,8 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
+    projet_modif_validation(projet)
+    
     # On met à jour les champs
     projet.nom = projet_update.nom
     if projet_update.budget_alloue is not None:
@@ -291,6 +238,9 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
         
     composant = db.query(models.Composant).filter(models.Composant.id_composant == bom_in.composant_id).first()
     if not composant:
@@ -340,19 +290,20 @@ def ingest():
     metadatas = []
 
     for item in data:
-        
-        existing = collection.get(ids=[item.id_composant])
+        item_id = str(item.id_composant)
+
+        existing = collection.get(ids=[item_id])
 
         if len(existing["ids"]) > 0:
-            print(f"Déjà indexé: {item.id_composant}")
+            print(f"Déjà indexé: {item_id}")
             continue
 
-        image_path = item.photo_url   
-        desc = f"{item.nom} {item.categorie}"  
+        image_path = item.photo_url
+        desc = f"{item.nom} {item.categorie}"
 
         emb = (embed_image_url(image_path) + embed_text(desc)) / 2
 
-        ids.append(str(item.id_composant))  
+        ids.append(item_id)
         embeddings.append(emb.tolist())
 
         metadatas.append({
@@ -361,12 +312,12 @@ def ingest():
             "emplacement": item.emplacement
         })
 
-    # Insertion dans ChromaDB
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        metadatas=metadatas
-    )
+    if ids:
+        collection.add(
+            ids=ids,
+            embeddings=embeddings,
+            metadatas=metadatas
+        )
 
     print("Ingestion terminée depuis la base de données")
 
