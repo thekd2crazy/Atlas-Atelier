@@ -169,6 +169,14 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
 def read_all_projets(db: Session = Depends(get_db)):
     return db.query(models.Projet).all()
 
+@app.get("/projets/actif", response_model=list[schemas.ProjetResponse])
+def read_actives_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).filter(models.Projet.statut == "actif")
+
+@app.get("/projets/archive", response_model=list[schemas.ProjetResponse])
+def read_archive_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).filter(models.Projet.statut == "archive")
+
 @app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
 def read_projet(id_projet: int, db: Session = Depends(get_db)):
     projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
