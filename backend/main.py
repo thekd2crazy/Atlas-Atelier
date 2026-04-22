@@ -228,6 +228,10 @@ def read_projet_budget(id_projet: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     return projet
 
+@app.get("/boms", response_model=list[schemas.BOMResponse])
+def read_all_bom( db: Session = Depends(get_db)):
+    return db.query(models.BOM).all()
+
 @app.get("/projets/{id_projet}/bom", response_model=list[schemas.BOMResponse])
 def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
     # 1. On s'assure que le projet existe bien
@@ -237,6 +241,9 @@ def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
     
     # 2. On récupère toutes les lignes de la nomenclature liées à cet ID
     nomenclature = db.query(models.BOM).filter(models.BOM.projet_id == id_projet).all()
+
+    if not nomenclature:
+        raise HTTPException(status_code=404, detail="Nomenclature introuvable")
     
     return nomenclature
 
@@ -280,6 +287,91 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     db.refresh(nouvelle_ligne)
     
     return nouvelle_ligne
+
+@app.delete("/projets/{id_projet}/bom/{id_composant}", response_model=schemas.BOMResponse)
+def delete_projet_bom(id_projet: int ,id_composant: int, db: Session = Depends(get_db)):
+
+     # 1. Vérifications
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
+
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    ligne_bom = db.query(models.BOM).filter(models.BOM.projet_id == id_projet, models.BOM.composant_id== id_composant).first()
+
+    if not ligne_bom:
+        raise HTTPException(status_code=404, detail="Ligne de nomenclature introuvable")
+
+    #LOGIQUE MÉTIER : "Remboursement" du budget et restitution du stock
+    projet.budget_consomme -= ligne_bom.cout_estime
+    composant.quantite += ligne_bom.qte_requise
+    
+    db.delete(ligne_bom)
+    db.commit()
+    return ligne_bom
+
+@app.patch("/projets/{id_projet}/bom/{id_composant}", response_model=schemas.BOMResponse)
+def update_projet_bom(id_projet: int, id_composant: int, bom_update: schemas.BOMUpdate, db: Session = Depends(get_db)):
+    
+    # 1. Vérification du projet
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
+
+    # 2. Vérification de la ligne BOM
+    ligne_bom = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == id_composant
+    ).first()
+    if not ligne_bom:
+        raise HTTPException(status_code=404, detail="Ligne de nomenclature introuvable")
+
+    # 3. Vérification du composant
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    # 4. LOGIQUE MÉTIER : Calcul des Deltas
+    
+    # Combien de composants en plus (ou en moins) avons-nous besoin ?
+    delta_qte = bom_update.qte_requise - ligne_bom.qte_requise
+    
+    # Si on demande PLUS de composants, on vérifie le stock disponible
+    if delta_qte > 0 and composant.quantite < delta_qte:
+        raise HTTPException(status_code=400, detail=f"Stock insuffisant. Il ne reste que {composant.quantite} pièces.")
+
+    # Quel est le nouveau coût total pour cette ligne ?
+    nouveau_cout = composant.prix * bom_update.qte_requise
+    
+    # Quelle est la différence de prix avec l'ancien coût ?
+    delta_cout = nouveau_cout - ligne_bom.cout_estime
+
+    # 5. Application des mises à jour
+    
+    # Mise à jour du stock (si delta_qte est négatif, ça rajoutera au stock, ce qui est le but !)
+    composant.quantite -= delta_qte
+    
+    # Mise à jour du budget (idem, si delta_cout est négatif, le budget consommé baissera)
+    projet.budget_consomme += delta_cout
+    
+    # Mise à jour de la ligne BOM
+    ligne_bom.qte_requise = bom_update.qte_requise
+    ligne_bom.cout_estime = nouveau_cout
+
+    # 6. Sauvegarde en base
+    db.commit()
+    db.refresh(ligne_bom)
+    
+    return ligne_bom
 
 # IA
 
