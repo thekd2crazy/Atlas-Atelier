@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, status , UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 import sqlite3
 import os
 import chromadb
@@ -207,8 +208,6 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     projet.nom = projet_update.nom
     if projet_update.budget_alloue is not None:
         projet.budget_alloue = projet_update.budget_alloue
-    if projet_update.budget_consomme is not None:
-        projet.budget_consomme = projet_update.budget_consomme
     if projet_update.description is not None:
         projet.description = projet_update.description
     if projet_update.date is not None:
@@ -261,6 +260,17 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     if not composant:
         raise HTTPException(status_code=404, detail="Composant non trouvé")
 
+    # Empêche les doublons BOM (projet_id, composant_id)
+    existing_line = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == bom_in.composant_id
+    ).first()
+    if existing_line:
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
+
     # 2. Calcul du coût de cette ligne
     cout_ligne = composant.prix * bom_in.qte_requise
 
@@ -283,7 +293,14 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     composant.quantite -= bom_in.qte_requise
 
     db.add(nouvelle_ligne)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
     db.refresh(nouvelle_ligne)
     
     return nouvelle_ligne
@@ -361,6 +378,8 @@ def update_projet_bom(id_projet: int, id_composant: int, bom_update: schemas.BOM
     composant.quantite -= delta_qte
     
     # Mise à jour du budget (idem, si delta_cout est négatif, le budget consommé baissera)
+    if projet.budget_alloue is not None and (projet.budget_consomme + delta_cout > projet.budget_alloue):
+        raise HTTPException(status_code=400, detail="Budget dépassé")
     projet.budget_consomme += delta_cout
     
     # Mise à jour de la ligne BOM

@@ -29,6 +29,7 @@ CREATE TABLE bom_lignes (
     composant_id INTEGER,
     qte_requise INTEGER,
     cout_estime REAL,
+    PRIMARY KEY (projet_id, composant_id),
 FOREIGN KEY (projet_id) REFERENCES projets(id_projet),
 FOREIGN KEY (composant_id) REFERENCES composants(id_composant)
 );

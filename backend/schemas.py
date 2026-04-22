@@ -46,7 +46,6 @@ class ProjetCreate(ProjetBase):
 
 # Ce que l'utilisateur envoie pour modifier un projet existant (PUT)
 class ProjetUpdate(ProjetBase):
-    budget_consomme: Optional[float] = None
     statut: Optional[str] = None
 
 class ProjetBudget(BaseModel):
