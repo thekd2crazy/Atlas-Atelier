@@ -80,6 +80,9 @@ class BOMResponse(BOMBase):
     class Config:
         from_attributes = True
 
+class BOMUpdate(BaseModel):
+    qte_requise: int
+
 # Ce que l'API renvoie après avoir lu le fichier CSV
 class CSVLigneApercu(BaseModel):
     reference: str
