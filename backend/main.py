@@ -285,6 +285,31 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     
     return nouvelle_ligne
 
+@app.delete("/projets/{id_projet}/bom/{id_composant}", response_model=schemas.BOMResponse)
+def delete_projet_bom(id_projet: int ,id_composant: int, db: Session = Depends(get_db)):
+
+     # 1. Vérifications
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
+
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    ligne_bom = db.query(models.BOM).filter(models.BOM.projet_id == id_projet, models.BOM.composant_id== id_composant).first()
+
+    #LOGIQUE MÉTIER : "Remboursement" du budget et restitution du stock
+    projet.budget_consomme -= ligne_bom.cout_estime
+    composant.quantite += ligne_bom.qte_requise
+    
+    db.delete(ligne_bom)
+    db.commit()
+    return ligne_bom
+
 # IA
 
 def get_all_composants():
