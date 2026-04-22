@@ -172,11 +172,11 @@ def read_all_projets(db: Session = Depends(get_db)):
 
 @app.get("/projets/actif", response_model=list[schemas.ProjetResponse])
 def read_actives_projets(db: Session = Depends(get_db)):
-    return db.query(models.Projet).filter(models.Projet.statut == "actif")
+    return db.query(models.Projet).filter(models.Projet.statut == "actif").all()
 
 @app.get("/projets/archive", response_model=list[schemas.ProjetResponse])
 def read_archive_projets(db: Session = Depends(get_db)):
-    return db.query(models.Projet).filter(models.Projet.statut == "archive")
+    return db.query(models.Projet).filter(models.Projet.statut == "archive").all()
 
 @app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
 def read_projet(id_projet: int, db: Session = Depends(get_db)):
@@ -240,9 +240,6 @@ def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
     
     # 2. On récupère toutes les lignes de la nomenclature liées à cet ID
     nomenclature = db.query(models.BOM).filter(models.BOM.projet_id == id_projet).all()
-
-    if not nomenclature:
-        raise HTTPException(status_code=404, detail="Nomenclature introuvable")
     
     return nomenclature
 
@@ -259,6 +256,9 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     composant = db.query(models.Composant).filter(models.Composant.id_composant == bom_in.composant_id).first()
     if not composant:
         raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    if bom_in.qte_requise <= 0:
+        raise HTTPException(status_code=400, detail="La quantité requise doit être strictement positive")
 
     # Empêche les doublons BOM (projet_id, composant_id)
     existing_line = db.query(models.BOM).filter(
@@ -356,6 +356,9 @@ def update_projet_bom(id_projet: int, id_composant: int, bom_update: schemas.BOM
     composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
     if not composant:
         raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    if bom_update.qte_requise <= 0:
+        raise HTTPException(status_code=400, detail="La quantité requise doit être strictement positive")
 
     # 4. LOGIQUE MÉTIER : Calcul des Deltas
     
