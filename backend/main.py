@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, status , UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 import sqlite3
 import os
 import chromadb
@@ -259,6 +260,17 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     if not composant:
         raise HTTPException(status_code=404, detail="Composant non trouvé")
 
+    # Empêche les doublons BOM (projet_id, composant_id)
+    existing_line = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == bom_in.composant_id
+    ).first()
+    if existing_line:
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
+
     # 2. Calcul du coût de cette ligne
     cout_ligne = composant.prix * bom_in.qte_requise
 
@@ -281,7 +293,14 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     composant.quantite -= bom_in.qte_requise
 
     db.add(nouvelle_ligne)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
     db.refresh(nouvelle_ligne)
     
     return nouvelle_ligne
