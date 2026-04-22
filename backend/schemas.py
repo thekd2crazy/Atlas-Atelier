@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -66,7 +66,7 @@ class ProjetResponse(ProjetBase):
 
 class BOMBase(BaseModel):
     composant_id: int
-    qte_requise: int
+    qte_requise: int = Field(..., gt=0) #qte_requise doit etre positif
 
 class BOMCreate(BOMBase):
     pass
@@ -80,7 +80,7 @@ class BOMResponse(BOMBase):
         from_attributes = True
 
 class BOMUpdate(BaseModel):
-    qte_requise: int
+    qte_requise: int = Field(..., gt=0)
 
 # Ce que l'API renvoie après avoir lu le fichier CSV
 class CSVLigneApercu(BaseModel):
