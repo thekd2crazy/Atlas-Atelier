@@ -228,6 +228,10 @@ def read_projet_budget(id_projet: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     return projet
 
+@app.get("/boms", response_model=list[schemas.BOMResponse])
+def read_all_bom( db: Session = Depends(get_db)):
+    return db.query(models.BOM).all()
+
 @app.get("/projets/{id_projet}/bom", response_model=list[schemas.BOMResponse])
 def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
     # 1. On s'assure que le projet existe bien
