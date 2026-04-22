@@ -207,8 +207,6 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     projet.nom = projet_update.nom
     if projet_update.budget_alloue is not None:
         projet.budget_alloue = projet_update.budget_alloue
-    if projet_update.budget_consomme is not None:
-        projet.budget_consomme = projet_update.budget_consomme
     if projet_update.description is not None:
         projet.description = projet_update.description
     if projet_update.date is not None:
