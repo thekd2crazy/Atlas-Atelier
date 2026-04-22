@@ -172,11 +172,11 @@ def read_all_projets(db: Session = Depends(get_db)):
 
 @app.get("/projets/actif", response_model=list[schemas.ProjetResponse])
 def read_actives_projets(db: Session = Depends(get_db)):
-    return db.query(models.Projet).filter(models.Projet.statut == "actif")
+    return db.query(models.Projet).filter(models.Projet.statut == "actif").all()
 
 @app.get("/projets/archive", response_model=list[schemas.ProjetResponse])
 def read_archive_projets(db: Session = Depends(get_db)):
-    return db.query(models.Projet).filter(models.Projet.statut == "archive")
+    return db.query(models.Projet).filter(models.Projet.statut == "archive").all()
 
 @app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
 def read_projet(id_projet: int, db: Session = Depends(get_db)):
