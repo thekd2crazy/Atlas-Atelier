@@ -361,6 +361,8 @@ def update_projet_bom(id_projet: int, id_composant: int, bom_update: schemas.BOM
     composant.quantite -= delta_qte
     
     # Mise à jour du budget (idem, si delta_cout est négatif, le budget consommé baissera)
+    if projet.budget_alloue is not None and (projet.budget_consomme + delta_cout > projet.budget_alloue):
+        raise HTTPException(status_code=400, detail="Budget dépassé")
     projet.budget_consomme += delta_cout
     
     # Mise à jour de la ligne BOM
