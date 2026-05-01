@@ -3,7 +3,7 @@ import { Composant, ComposantCreate, ComposantUpdate } from "@/types/type-compos
 const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
 
 export async function AddComposant(data: ComposantCreate) {
-  const response = await fetch(`api/stock`, {
+  const response = await fetch(`/api/stock`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -23,7 +23,10 @@ export async function getAllComposants() : Promise<Composant[]>  {
 }
 
 export async function UpdateComposant( id : number , data : ComposantUpdate) : Promise<Composant> {
-  const response = await fetch(`${API_BASE_URL}/composant/${id}`, {
+
+  console.log(`${typeof(id)}: ${id}`);
+
+  const response = await fetch(`api/stock/${id}`, {
     method: "PUT",
     headers: {
       "Content-type": "application/json"
@@ -49,11 +52,15 @@ export async function DeleteComposant(id:number) : Promise<void> {
   }
 }
 
-export async function getOneComposant(id:string): Promise<Composant> {
-  const response = await fetch(`api/stock/${id}`, {
-    method: 'GET',
+export async function getOneComposant(id: number): Promise<Composant> {
+  const response = await fetch(`${API_BASE_URL}/composants/${id}`, {
+    method: "GET",
+    cache: "no-store",
+  });
 
-  })
+  if (!response.ok) {
+    throw new Error("Composant introuvable");
+  }
 
   return await response.json();
 }

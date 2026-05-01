@@ -8,15 +8,14 @@ import { Input } from "@/components/ui/input";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@/components/ui/table";
-import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { Composant, ComposantCreate } from "@/types/type-composant";
-import { AddComposant } from "@/lib/stock-api";
-import { NextResponse } from "next/server";
+import { AddComposant, UpdateComposant } from "@/lib/stock-api";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { FaSave, FaTrash } from "react-icons/fa";
 
 
 
@@ -31,10 +30,8 @@ type component = {
     photo_url : string 
 }
 
-
-
-
 export default function StockPage () {
+    
     const router = useRouter();
     const [components, setComponents] = useState<Composant[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -109,8 +106,11 @@ export default function StockPage () {
         }
     };
 
-    // Configuration des categories 
+    //Page pour modifier les compsants : 
+    const [editOpen, setEditOpen] = useState<boolean>(false);
+    const [currentComposant, setCurrentComposant] = useState<Composant>();
 
+    // Configuration des categories 
     const CAT_CONFIG = {
         mechanical : {
             label: "Mécanique",
@@ -164,6 +164,7 @@ export default function StockPage () {
                 </Card>
                 
                 {/* Filtres */}
+
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
@@ -182,7 +183,7 @@ export default function StockPage () {
                                 <Filter className="h-4 w-4 text-muted-foreground" />
                                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                                 <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="Filtrer par statut" />
+                                    <SelectValue placeholder="Filtrer par categorie" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">Tous les catégories</SelectItem>
@@ -226,7 +227,8 @@ export default function StockPage () {
 
                                             return (
                                                 <TableRow
-                                                    key={c.id|| crypto.randomUUID()}
+                                                    onClick={() => {setEditOpen(true), setCurrentComposant(c)} }
+                                                    key={c.id_composant|| crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>
@@ -288,6 +290,7 @@ export default function StockPage () {
                                                         "-"
                                                         )}
                                                     </TableCell>
+                                                    
                                                 </TableRow>
                                             )
                                 })}    
@@ -404,6 +407,166 @@ export default function StockPage () {
                         </form>
                     </DialogContent>
                 </Dialog>
+            
+            {/*Modification du composant */}
+               <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                    <DialogTitle>Modifier le composant</DialogTitle>
+                    <DialogDescription>
+                        Mettez à jour les informations du composant.
+                    </DialogDescription>
+                    </DialogHeader>
+
+                    {currentComposant && (
+                    <form
+                        onSubmit={async (e) => {
+                        e.preventDefault();
+
+                        // Met à jour le composant (via API / server action)
+                        // Ici, tu peux appeler par exemple:
+                        try {
+                            const updated = await UpdateComposant(
+                            currentComposant.id_composant,
+                            currentComposant
+                            );
+
+                            // 1. Mettez à jour localment les componsants modifiés
+
+                            setComponents((prev) =>
+                            prev.map((c) => (c.id_composant === updated.id_composant ? updated : c))
+                            );
+
+                            setEditOpen(false);
+                        } catch (err) {
+                            console.error("Échec de la mise à jour", err);
+                            alert("Impossible de mettre à jour le composant.");
+                        }      
+                        
+                        }}
+                        className="space-y-4 py-2"
+                    >
+                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-nom">Nom</Label>
+                            <Input
+                            id="edit-nom"
+                            value={currentComposant.nom}
+                            onChange={(e) =>
+                                setCurrentComposant({
+                                ...currentComposant,
+                                nom: e.target.value,
+                                })
+                            }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-reference">Référence</Label>
+                            <Input
+                            id="edit-reference"
+                            value={currentComposant.reference}
+                            onChange={(e) =>
+                                setCurrentComposant({
+                                ...currentComposant,
+                                reference: e.target.value,
+                                })
+                            }
+                            />
+                        </div>
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label htmlFor="edit-categorie">Catégorie</Label>
+                        <Input
+                            id="edit-categorie"
+                            value={currentComposant.categorie}
+                            onChange={(e) =>
+                            setCurrentComposant({
+                                ...currentComposant,
+                                categorie: e.target.value,
+                            })
+                            }
+                        />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-prix">Prix (€)</Label>
+                                <Input
+                                id="edit-prix"
+                                type="number"
+                                step="0.01"
+                                value={currentComposant.prix || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    prix: parseFloat(e.target.value) || 0,
+                                    })
+                                }
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-quantite">Quantité</Label>
+                                <Input
+                                id="edit-quantite"
+                                type="number"
+                                value={currentComposant.quantite || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    quantite: parseInt(e.target.value, 10) || 0,
+                                    })
+                                }
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-emplacement">Emplacement</Label>
+                                <Input
+                                id="edit-emplacement"
+                                value={currentComposant.emplacement || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    emplacement: e.target.value,
+                                    })
+                                }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label htmlFor="edit-photo_url">URL de la photo</Label>
+                        <Input
+                            id="edit-photo_url"
+                            type="url"
+                            value={currentComposant.photo_url || ""}
+                            onChange={(e) =>
+                            setCurrentComposant({
+                                ...currentComposant,
+                                photo_url: e.target.value,
+                            })
+                            }
+                        />
+                        </div>
+
+                        <DialogFooter className="flex items-center ">
+                            <div className="mx-2">
+                                <Button type="submit" className="w-auto">
+                                    <FaSave size={16}/>
+                                    Save
+                                </Button>
+                            </div>
+                            <div className="mx-">
+                                <Button className="w-auto">
+                                    <FaTrash size={16}/>
+                                    Delete
+                                </Button>
+                            </div>
+                        </DialogFooter>
+                    </form>
+                    )}
+                </DialogContent>
+                </Dialog>                 
 
             </div>
         </div>

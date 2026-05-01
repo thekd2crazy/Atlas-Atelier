@@ -4,11 +4,11 @@ import { Composant, ComposantUpdate } from '@/types/type-composant';
 const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
 
 // UPDATE un composant 
-export async function PUT( request: NextRequest, {params} : {params : {id : string}}): Promise<NextResponse>  {
+export async function PUT( request: NextRequest, {params} : {params : {id : number}}): Promise<NextResponse>  {
   try {
 
     // 1. Valider l' ID 
-    const id_composant = parseInt(params.id);
+    const id_composant = params.id;
     if (isNaN(id_composant) || id_composant <= 0 ) { 
       return NextResponse.json({error : "ID invalide"}, {status : 400});
     }

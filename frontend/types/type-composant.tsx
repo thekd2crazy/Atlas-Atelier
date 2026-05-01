@@ -1,4 +1,3 @@
-
 // Creer un composant : 
 export type ComposantCreate = {
   nom: string;
@@ -12,7 +11,7 @@ export type ComposantCreate = {
 
 // Utiliser dans getAllcomposants()
 export type Composant = {
-    id : number
+    id_composant : number
     nom : string
     categorie : string
     reference : string 
@@ -32,6 +31,3 @@ export type ComposantUpdate = {
     prix : number | string 
     photo_url : string 
 };
-
-
-
