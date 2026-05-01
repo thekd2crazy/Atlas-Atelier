@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@/components/ui/table";
+import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { Composant, ComposantCreate } from "@/types/type-composant";
 import { AddComposant, UpdateComposant } from "@/lib/stock-api";
+import { NextResponse } from "next/server";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,8 +32,10 @@ type component = {
     photo_url : string 
 }
 
+
+
+
 export default function StockPage () {
-    
     const router = useRouter();
     const [components, setComponents] = useState<Composant[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -164,7 +168,6 @@ export default function StockPage () {
                 </Card>
                 
                 {/* Filtres */}
-
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
