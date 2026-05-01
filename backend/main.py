@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, status , UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 import sqlite3
 import os
 import chromadb
@@ -37,6 +38,12 @@ def get_db():
     finally:
         db.close()
 
+def projet_modif_validation(projet):
+    if projet.statut == "archive":
+        raise HTTPException(status_code=409, detail="Les projets archivés sont non modifiables (Lecture seule)")
+    
+    return
+
 #nos endpoints
 
 
@@ -50,6 +57,8 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
 
     if existant:
         existant.quantite += composant.quantite
+        if composant.description is not None:
+            existant.description = composant.description
         db.commit()
         db.refresh(existant)
 
@@ -62,7 +71,8 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
         prix=composant.prix,
         emplacement=composant.emplacement,
         quantite=composant.quantite, 
-        photo_url=composant.photo_url
+        photo_url=composant.photo_url,
+        description=composant.description
     )
     
     db.add(nouveau_composant)
@@ -95,7 +105,7 @@ def delete_composant(id_composant: int ,db: Session = Depends(get_db)):
     db.delete(composant)
     db.commit()
 
-    collection.delete(ids=[id_composant])
+    collection.delete(ids=[str(id_composant)])
     return composant
 
 
@@ -115,6 +125,7 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     composant.emplacement = composant_update.emplacement
     composant.quantite = composant_update.quantite
     composant.photo_url = composant_update.photo_url
+    composant.description = composant_update.description
     
     # 4. On valide les changements dans la base 
     db.commit()
@@ -141,67 +152,6 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     
     return composant
 
-def get_all_composants():
-    db: Session = SessionLocal()
-    try:
-        return db.query(models.Composant).all()
-    finally:
-        db.close()
-
-def ingest():
-    data = get_all_composants()
-
-    ids = []
-    embeddings = []
-    metadatas = []
-
-    for item in data:
-        
-        image_path = item.photo_url   
-        desc = f"{item.nom} {item.categorie}"  
-
-        emb = (embed_image(image_path) + embed_text(desc)) / 2
-
-        ids.append(str(item.id_composant))  
-        embeddings.append(emb.tolist())
-
-        metadatas.append({
-            "nom": item.nom,
-            "categorie": item.categorie,
-            "emplacement": item.emplacement
-        })
-
-    # Insertion dans ChromaDB
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        metadatas=metadatas
-    )
-
-    print("Ingestion terminée depuis la base de données")
-
-@app.post("/ingestion", status_code=status.HTTP_204_NO_CONTENT)
-def ingestion():
-    ingest()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@app.post("/recherche/image")
-async def recherche_image(file: UploadFile = File(...)):
-    temp_path = f"temp_{uuid.uuid4()}.jpg"
-
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    emb = embed_image(temp_path)
-
-    results = collection.query(
-        query_embeddings=[emb.tolist()],
-        n_results=5
-    )
-
-    os.remove(temp_path)
-
-    return results["metadatas"]
 # Projets
 
 @app.post("/projets", response_model=schemas.ProjetResponse)
@@ -209,6 +159,8 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
     nouveau_projet = models.Projet(
         nom=projet.nom,
         budget_alloue=projet.budget_alloue,
+        description=projet.description,
+        date=projet.date,
         # On force les valeurs par défaut ici au cas où
         budget_consomme=0.0, 
         statut="actif"
@@ -221,6 +173,14 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
 @app.get("/projets", response_model=list[schemas.ProjetResponse])
 def read_all_projets(db: Session = Depends(get_db)):
     return db.query(models.Projet).all()
+
+@app.get("/projets/actif", response_model=list[schemas.ProjetResponse])
+def read_actives_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).filter(models.Projet.statut == "actif").all()
+
+@app.get("/projets/archive", response_model=list[schemas.ProjetResponse])
+def read_archive_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).filter(models.Projet.statut == "archive").all()
 
 @app.get("/projets/{id_projet}", response_model=schemas.ProjetResponse)
 def read_projet(id_projet: int, db: Session = Depends(get_db)):
@@ -246,12 +206,16 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
+    projet_modif_validation(projet)
+    
     # On met à jour les champs
     projet.nom = projet_update.nom
     if projet_update.budget_alloue is not None:
         projet.budget_alloue = projet_update.budget_alloue
-    if projet_update.budget_consomme is not None:
-        projet.budget_consomme = projet_update.budget_consomme
+    if projet_update.description is not None:
+        projet.description = projet_update.description
+    if projet_update.date is not None:
+        projet.date = projet_update.date
     if projet_update.statut is not None:
         projet.statut = projet_update.statut
         
@@ -266,6 +230,10 @@ def read_projet_budget(id_projet: int, db: Session = Depends(get_db)):
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     return projet
+
+@app.get("/boms", response_model=list[schemas.BOMResponse])
+def read_all_bom( db: Session = Depends(get_db)):
+    return db.query(models.BOM).all()
 
 @app.get("/projets/{id_projet}/bom", response_model=list[schemas.BOMResponse])
 def read_projet_bom(id_projet: int, db: Session = Depends(get_db)):
@@ -285,10 +253,27 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
         
     composant = db.query(models.Composant).filter(models.Composant.id_composant == bom_in.composant_id).first()
     if not composant:
         raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    if bom_in.qte_requise <= 0:
+        raise HTTPException(status_code=400, detail="La quantité requise doit être strictement positive")
+
+    # Empêche les doublons BOM (projet_id, composant_id)
+    existing_line = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == bom_in.composant_id
+    ).first()
+    if existing_line:
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
 
     # 2. Calcul du coût de cette ligne
     cout_ligne = composant.prix * bom_in.qte_requise
@@ -312,10 +297,107 @@ def add_component_to_projet(id_projet: int, bom_in: schemas.BOMCreate, db: Sessi
     composant.quantite -= bom_in.qte_requise
 
     db.add(nouvelle_ligne)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Ligne BOM déjà existante pour ce composant. Utilisez PATCH pour modifier la quantité."
+        )
     db.refresh(nouvelle_ligne)
     
     return nouvelle_ligne
+
+@app.delete("/projets/{id_projet}/bom/{id_composant}", response_model=schemas.BOMResponse)
+def delete_projet_bom(id_projet: int ,id_composant: int, db: Session = Depends(get_db)):
+
+     # 1. Vérifications
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if projet is None:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    #Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
+
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    ligne_bom = db.query(models.BOM).filter(models.BOM.projet_id == id_projet, models.BOM.composant_id== id_composant).first()
+
+    if not ligne_bom:
+        raise HTTPException(status_code=404, detail="Ligne de nomenclature introuvable")
+
+    #LOGIQUE MÉTIER : "Remboursement" du budget et restitution du stock
+    projet.budget_consomme -= ligne_bom.cout_estime
+    composant.quantite += ligne_bom.qte_requise
+    
+    db.delete(ligne_bom)
+    db.commit()
+    return ligne_bom
+
+@app.patch("/projets/{id_projet}/bom/{id_composant}", response_model=schemas.BOMResponse)
+def update_projet_bom(id_projet: int, id_composant: int, bom_update: schemas.BOMUpdate, db: Session = Depends(get_db)):
+    
+    # 1. Vérification du projet
+    projet = db.query(models.Projet).filter(models.Projet.id_projet == id_projet).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # Vérifie si le projet est modifiable
+    projet_modif_validation(projet)
+
+    # 2. Vérification de la ligne BOM
+    ligne_bom = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == id_composant
+    ).first()
+    if not ligne_bom:
+        raise HTTPException(status_code=404, detail="Ligne de nomenclature introuvable")
+
+    # 3. Vérification du composant
+    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
+
+    if bom_update.qte_requise <= 0:
+        raise HTTPException(status_code=400, detail="La quantité requise doit être strictement positive")
+
+    # 4. LOGIQUE MÉTIER : Calcul des Deltas
+    
+    # Combien de composants en plus (ou en moins) avons-nous besoin ?
+    delta_qte = bom_update.qte_requise - ligne_bom.qte_requise
+    
+    # Si on demande PLUS de composants, on vérifie le stock disponible
+    if delta_qte > 0 and composant.quantite < delta_qte:
+        raise HTTPException(status_code=400, detail=f"Stock insuffisant. Il ne reste que {composant.quantite} pièces.")
+
+    # Quel est le nouveau coût total pour cette ligne ?
+    nouveau_cout = composant.prix * bom_update.qte_requise
+    
+    # Quelle est la différence de prix avec l'ancien coût ?
+    delta_cout = nouveau_cout - ligne_bom.cout_estime
+
+    # 5. Application des mises à jour
+    
+    # Mise à jour du stock (si delta_qte est négatif, ça rajoutera au stock, ce qui est le but !)
+    composant.quantite -= delta_qte
+    
+    # Mise à jour du budget (idem, si delta_cout est négatif, le budget consommé baissera)
+    if projet.budget_alloue is not None and (projet.budget_consomme + delta_cout > projet.budget_alloue):
+        raise HTTPException(status_code=400, detail="Budget dépassé")
+    projet.budget_consomme += delta_cout
+    
+    # Mise à jour de la ligne BOM
+    ligne_bom.qte_requise = bom_update.qte_requise
+    ligne_bom.cout_estime = nouveau_cout
+
+    # 6. Sauvegarde en base
+    db.commit()
+    db.refresh(ligne_bom)
+    
+    return ligne_bom
 
 # IA
 
@@ -334,19 +416,20 @@ def ingest():
     metadatas = []
 
     for item in data:
-        
-        existing = collection.get(ids=[item.id_composant])
+        item_id = str(item.id_composant)
+
+        existing = collection.get(ids=[item_id])
 
         if len(existing["ids"]) > 0:
-            print(f"Déjà indexé: {item.id_composant}")
+            print(f"Déjà indexé: {item_id}")
             continue
 
-        image_path = item.photo_url   
-        desc = f"{item.nom} {item.categorie}"  
+        image_path = item.photo_url
+        desc = f"{item.nom} {item.categorie}"
 
         emb = (embed_image_url(image_path) + embed_text(desc)) / 2
 
-        ids.append(str(item.id_composant))  
+        ids.append(item_id)
         embeddings.append(emb.tolist())
 
         metadatas.append({
@@ -355,12 +438,12 @@ def ingest():
             "emplacement": item.emplacement
         })
 
-    # Insertion dans ChromaDB
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        metadatas=metadatas
-    )
+    if ids:
+        collection.add(
+            ids=ids,
+            embeddings=embeddings,
+            metadatas=metadatas
+        )
 
     print("Ingestion terminée depuis la base de données")
 

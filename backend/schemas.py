@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
+from datetime import datetime
 
 # 1. Le schéma de base (Les colonnes communes)
 class ComposantBase(BaseModel):
@@ -11,6 +12,7 @@ class ComposantBase(BaseModel):
     quantite: int
     # On met phot_url en Optionnel (permet d'envoyer 'null' si on n'a pas de photo)
     photo_url: Optional[str] = None
+    description: Optional[str] = None
 
 # 2. Le schéma d'ENTRÉE (Ce que le frontend envoie via un POST)
 class ComposantCreate(ComposantBase):
@@ -33,6 +35,8 @@ class ComposantResponse(ComposantBase):
 class ProjetBase(BaseModel):
     nom: str
     budget_alloue: Optional[float] = None
+    description: Optional[str] = None
+    date: Optional[datetime] = None
    
 
 class ProjetCreate(ProjetBase):
@@ -42,7 +46,6 @@ class ProjetCreate(ProjetBase):
 
 # Ce que l'utilisateur envoie pour modifier un projet existant (PUT)
 class ProjetUpdate(ProjetBase):
-    budget_consomme: Optional[float] = None
     statut: Optional[str] = None
 
 class ProjetBudget(BaseModel):
@@ -63,7 +66,7 @@ class ProjetResponse(ProjetBase):
 
 class BOMBase(BaseModel):
     composant_id: int
-    qte_requise: int
+    qte_requise: int = Field(..., gt=0) #qte_requise doit etre positif
 
 class BOMCreate(BOMBase):
     pass
@@ -75,6 +78,9 @@ class BOMResponse(BOMBase):
 
     class Config:
         from_attributes = True
+
+class BOMUpdate(BaseModel):
+    qte_requise: int = Field(..., gt=0)
 
 # Ce que l'API renvoie après avoir lu le fichier CSV
 class CSVLigneApercu(BaseModel):

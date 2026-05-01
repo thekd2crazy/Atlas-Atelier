@@ -5,6 +5,7 @@ id_composant INTEGER PRIMARY KEY AUTOINCREMENT,
 nom TEXT NOT NULL,
     reference TEXT UNIQUE NOT NULL,
     categorie TEXT,
+    description TEXT,
     quantite INTEGER DEFAULT 0,
     emplacement TEXT,
     prix REAL,
@@ -15,17 +16,20 @@ id_projet INTEGER PRIMARY KEY AUTOINCREMENT,
 nom TEXT NOT NULL,
 budget_alloue REAL,
 budget_consomme REAL DEFAULT 0,
+description TEXT,
+date DATETIME,
 statut TEXT CHECK(statut IN ('actif', 'archive')) DEFAULT 'actif'
 );
-INSERT INTO projets VALUES(1,'Tri plateau repas',NULL,0.0,'actif');
-INSERT INTO projets VALUES(2,'Smart Totem',NULL,0.0,'actif');
-INSERT INTO projets VALUES(3,'UveTibi',NULL,0.0,'actif');
-INSERT INTO projets VALUES(4,'Scanner NO2',NULL,0.0,'actif');
+INSERT INTO projets (id_projet, nom, budget_alloue, budget_consomme, description, date, statut) VALUES(1,'Tri plateau repas',NULL,0.0,NULL,NULL,'actif');
+INSERT INTO projets (id_projet, nom, budget_alloue, budget_consomme, description, date, statut) VALUES(2,'Smart Totem',NULL,0.0,NULL,NULL,'actif');
+INSERT INTO projets (id_projet, nom, budget_alloue, budget_consomme, description, date, statut) VALUES(3,'UveTibi',NULL,0.0,NULL,NULL,'actif');
+INSERT INTO projets (id_projet, nom, budget_alloue, budget_consomme, description, date, statut) VALUES(4,'Scanner NO2',NULL,0.0,NULL,NULL,'actif');
 CREATE TABLE bom_lignes (
     projet_id INTEGER,
     composant_id INTEGER,
     qte_requise INTEGER,
     cout_estime REAL,
+    PRIMARY KEY (projet_id, composant_id),
 FOREIGN KEY (projet_id) REFERENCES projets(id_projet),
 FOREIGN KEY (composant_id) REFERENCES composants(id_composant)
 );
