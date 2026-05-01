@@ -11,6 +11,13 @@ import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@
 import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
+import { Composant, ComposantCreate } from "@/types/type-composant";
+import { AddComposant, UpdateComposant } from "@/lib/stock-api";
+import { NextResponse } from "next/server";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { FaSave, FaTrash } from "react-icons/fa";
 
 
 
@@ -25,22 +32,12 @@ type component = {
     photo_url : string 
 }
 
-type ComposantCreate = {
-  nom: string;
-  reference: string;
-  categorie: string;
-  prix: number;
-  emplacement: string;
-  quantite: number;
-  photo_url: string;
-};
-
 
 
 
 export default function StockPage () {
     const router = useRouter();
-    const [components, setComponents] = useState<component[]>([]);
+    const [components, setComponents] = useState<Composant[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [loading, setLoading] = useState(true);
@@ -51,7 +48,7 @@ export default function StockPage () {
         setLoading(true);
         const res = await fetch('/api/stock'); // Appel API correct
         if (!res.ok) throw new Error('Erreur API');
-        const data: component[] = await res.json();
+        const data: Composant[] = await res.json();
         setComponents(data);
       } catch (error) {
 
@@ -69,17 +66,55 @@ export default function StockPage () {
   }, []);
              
 
-    // Formulaire de création de composant
-    const [newComponent, setNewComponent] = useState({
-        categorie: "",
+    // Page Creation de composant.
+    const [open, setOpen] = useState<boolean>(false);
+    const [form, setForm] = useState<ComposantCreate>({
+        nom: "",
         reference: "",
+        categorie: "",
+        prix: 0,
         emplacement: "",
-        quantite: "",
-        description: "",  
-    })
+        quantite: 0,
+        photo_url: "",
+    });
+
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({
+        ...prev,
+        [name]: name === "prix" || name === "quantite" ? Number(value) : value,
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log("Composant à créer :", form);
+        try{
+            // Ici tu peux appeler une API / server action
+            const res = await AddComposant(form);
+            setForm({
+                nom: "",
+                reference: "",
+                categorie: "",
+                prix: 0,
+                emplacement: "",
+                quantite: 0,
+                photo_url: "",
+            }); // reset le formulaire important !
+            setOpen(false);
+        } 
+        catch (error) {
+            return console.log("Creation impossible !")
+        }
+    };
+
+    //Page pour modifier les compsants : 
+    const [editOpen, setEditOpen] = useState<boolean>(false);
+    const [currentComposant, setCurrentComposant] = useState<Composant>();
 
     // Configuration des categories 
-
     const CAT_CONFIG = {
         mechanical : {
             label: "Mécanique",
@@ -101,10 +136,10 @@ export default function StockPage () {
                 <div>
                     <h1 className="text-3xl font-bold">Composants</h1>
                     <p className="text-muted-foreground mt-1">
-                    Gérez stock de Composants
+                        Gérez stock de Composants
                     </p>
                 </div>
-                <Button >
+                <Button onClick={() => setOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Créer un Composant
                 </Button>
@@ -151,7 +186,7 @@ export default function StockPage () {
                                 <Filter className="h-4 w-4 text-muted-foreground" />
                                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                                 <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="Filtrer par statut" />
+                                    <SelectValue placeholder="Filtrer par categorie" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">Tous les catégories</SelectItem>
@@ -191,39 +226,40 @@ export default function StockPage () {
                             <TableBody>
                                 {
 
-                                    components.map((component) => {
+                                    components.map((c) => {
 
                                             return (
                                                 <TableRow
-                                                    key={component.id|| crypto.randomUUID()}
+                                                    onClick={() => {setEditOpen(true), setCurrentComposant(c)} }
+                                                    key={c.id_composant|| crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                         <User className="h-4 w-4 text-muted-foreground" />
-                                                        <div className="font-medium">{component.nom}</div>
+                                                        <div className="font-medium">{c.nom}</div>
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {component.reference}
+                                                        {c.reference}
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {component.categorie}
+                                                        {c.categorie}
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.emplacement ? (
+                                                        {c.emplacement ? (
                                                         <div className="flex items-center gap-1 text-sm">
                                                             <MapPin className="h-3 w-3 text-muted-foreground" />
-                                                            {component.emplacement}
+                                                            {c.emplacement}
                                                         </div>
                                                         ) : (
                                                         "-"
@@ -231,32 +267,33 @@ export default function StockPage () {
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.quantite !== undefined ? (
-                                                        <span>{component.quantite}</span>
+                                                        {c.quantite !== undefined ? (
+                                                        <span>{c.quantite}</span>
                                                         ) : (
                                                         "-"
                                                         )}
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.prix !== undefined ? (
-                                                        <span>{component.prix} €</span>
+                                                        {c.prix !== undefined ? (
+                                                        <span>{c.prix} €</span>
                                                         ) : (
                                                         "-"
                                                         )}
                                                     </TableCell>
 
                                                     <TableCell>
-                                                        {component.photo_url ? (
+                                                        {c.photo_url ? (
                                                         <img
-                                                            src={component.photo_url}
-                                                            alt={component.nom}
+                                                            src={c.photo_url}
+                                                            alt={c.nom}
                                                             className="h-10 w-10 object-cover rounded"
                                                         />
                                                         ) : (
                                                         "-"
                                                         )}
                                                     </TableCell>
+                                                    
                                                 </TableRow>
                                             )
                                 })}    
@@ -264,7 +301,275 @@ export default function StockPage () {
                         </Table>
                     </CardContent>
                 </Card>
+                <Dialog open={open} onOpenChange={setOpen}>
+                    
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Ajouter un composant</DialogTitle>
+                            <DialogDescription>
+                                Remplissez les champs ci‑dessous pour ajouter un nouveau composant.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="nom">Nom</Label>
+                                    <Input
+                                        id="nom"
+                                        name="nom"
+                                        value={form.nom}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="reference">Référence</Label>
+                                    <Input
+                                        id="reference"
+                                        name="reference"
+                                        value={form.reference}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                            </div>
 
+                            <div className="space-y-2">
+                                <Label htmlFor="categorie">Catégorie</Label>
+                                <Input
+                                id="categorie"
+                                name="categorie"
+                                value={form.categorie}
+                                onChange={handleChange}
+                                required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="prix">Prix (€)</Label>
+                                    <Input
+                                        id="prix"
+                                        name="prix"
+                                        type="number"
+                                        step="0.01"
+                                        value={form.prix || ""}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="quantite">Quantité</Label>
+                                    <Input
+                                        id="quantite"
+                                        name="quantite"
+                                        type="number"
+                                        value={form.quantite || ""}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="emplacement">Emplacement</Label>
+                                    <Input
+                                        id="emplacement"
+                                        name="emplacement"
+                                        value={form.emplacement}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="photo_url">URL de la photo</Label>
+                                <Input
+                                id="photo_url"
+                                name="photo_url"
+                                type="url"
+                                value={form.photo_url}
+                                onChange={handleChange}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="description"> Description </Label>
+                                <Textarea
+                                    name="description"
+                                    placeholder="Décrivez le composant..."
+                                    className="resize-vertical min-h-[80px]"  // Tailwind resize
+                                    rows={3}
+                                />
+                            </div>
+
+                            <DialogFooter>
+                                <Button type="submit" className="w-full">
+                                Enregistrer le composant
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            
+            {/*Modification du composant */}
+               <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                    <DialogTitle>Modifier le composant</DialogTitle>
+                    <DialogDescription>
+                        Mettez à jour les informations du composant.
+                    </DialogDescription>
+                    </DialogHeader>
+
+                    {currentComposant && (
+                    <form
+                        onSubmit={async (e) => {
+                        e.preventDefault();
+
+                        // Met à jour le composant (via API / server action)
+                        // Ici, tu peux appeler par exemple:
+                        try {
+                            const updated = await UpdateComposant(
+                            currentComposant.id_composant,
+                            currentComposant
+                            );
+
+                            // 1. Mettez à jour localment les componsants modifiés
+
+                            setComponents((prev) =>
+                            prev.map((c) => (c.id_composant === updated.id_composant ? updated : c))
+                            );
+
+                            setEditOpen(false);
+                        } catch (err) {
+                            console.error("Échec de la mise à jour", err);
+                            alert("Impossible de mettre à jour le composant.");
+                        }      
+                        
+                        }}
+                        className="space-y-4 py-2"
+                    >
+                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-nom">Nom</Label>
+                            <Input
+                            id="edit-nom"
+                            value={currentComposant.nom}
+                            onChange={(e) =>
+                                setCurrentComposant({
+                                ...currentComposant,
+                                nom: e.target.value,
+                                })
+                            }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-reference">Référence</Label>
+                            <Input
+                            id="edit-reference"
+                            value={currentComposant.reference}
+                            onChange={(e) =>
+                                setCurrentComposant({
+                                ...currentComposant,
+                                reference: e.target.value,
+                                })
+                            }
+                            />
+                        </div>
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label htmlFor="edit-categorie">Catégorie</Label>
+                        <Input
+                            id="edit-categorie"
+                            value={currentComposant.categorie}
+                            onChange={(e) =>
+                            setCurrentComposant({
+                                ...currentComposant,
+                                categorie: e.target.value,
+                            })
+                            }
+                        />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-prix">Prix (€)</Label>
+                                <Input
+                                id="edit-prix"
+                                type="number"
+                                step="0.01"
+                                value={currentComposant.prix || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    prix: parseFloat(e.target.value) || 0,
+                                    })
+                                }
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-quantite">Quantité</Label>
+                                <Input
+                                id="edit-quantite"
+                                type="number"
+                                value={currentComposant.quantite || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    quantite: parseInt(e.target.value, 10) || 0,
+                                    })
+                                }
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-emplacement">Emplacement</Label>
+                                <Input
+                                id="edit-emplacement"
+                                value={currentComposant.emplacement || ""}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    emplacement: e.target.value,
+                                    })
+                                }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label htmlFor="edit-photo_url">URL de la photo</Label>
+                        <Input
+                            id="edit-photo_url"
+                            type="url"
+                            value={currentComposant.photo_url || ""}
+                            onChange={(e) =>
+                            setCurrentComposant({
+                                ...currentComposant,
+                                photo_url: e.target.value,
+                            })
+                            }
+                        />
+                        </div>
+
+                        <DialogFooter className="flex items-center ">
+                            <div className="mx-2">
+                                <Button type="submit" className="w-auto">
+                                    <FaSave size={16}/>
+                                    Save
+                                </Button>
+                            </div>
+                            <div className="mx-">
+                                <Button className="w-auto">
+                                    <FaTrash size={16}/>
+                                    Delete
+                                </Button>
+                            </div>
+                        </DialogFooter>
+                    </form>
+                    )}
+                </DialogContent>
+                </Dialog>                 
 
             </div>
         </div>

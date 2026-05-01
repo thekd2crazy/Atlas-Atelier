@@ -120,20 +120,24 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     db.commit()
     db.refresh(composant)
 
-    #5. Modification dans chromaDB
-    image_path = composant.photo_url   
-    desc = f"{composant.nom} {composant.categorie}"  
+    try:
+        #5. Modification dans chromaDB
+        image_path = composant.photo_url   
+        desc = f"{composant.nom} {composant.categorie}"  
 
-    emb = (embed_image_url(image_path) + embed_text(desc)) / 2
-    collection.update(
-        ids=[id_composant],
-        embeddings=[emb.tolist()],
-        metadatas=[{
-            "nom": composant.nom,
-            "categorie": composant.categorie,
-            "emplacement": composant.emplacement
-    }]
-)
+        emb = (embed_image_url(image_path) + embed_text(desc)) / 2
+        collection.update(
+            ids=[id_composant],
+            embeddings=[emb.tolist()],
+            metadatas=[{
+                "nom": composant.nom,
+                "categorie": composant.categorie,
+                "emplacement": composant.emplacement
+            }]
+        )
+    except Exception as e : 
+        print("ERREUR Chroma / embeddings :", e)
+        raise HTTPException(status_code=500, detail="Erreur interne Chroma")
     
     return composant
 
