@@ -15,10 +15,11 @@ type Props = {
 
 export default async function StockDetail({ params }: Props) {
     const { id } = await params;  // ✅ Unwrap !
+    const idComposant = Number(id);
 
     let composant;
     try {
-        composant = await getOneComposant(id);  // Maintenant OK !
+        composant = await getOneComposant(idComposant);
     } catch {
         notFound();
     }

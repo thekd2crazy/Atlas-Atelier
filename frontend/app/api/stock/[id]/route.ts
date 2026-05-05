@@ -4,11 +4,16 @@ import { Composant, ComposantUpdate } from '@/types/type-composant';
 const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
 
 // UPDATE un composant 
-export async function PUT( request: NextRequest, {params} : {params : {id : number}}): Promise<NextResponse>  {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
 
+    const { id } = await params;
+
     // 1. Valider l' ID 
-    const id_composant = params.id;
+    const id_composant = parseInt(id);
     if (isNaN(id_composant) || id_composant <= 0 ) { 
       return NextResponse.json({error : "ID invalide"}, {status : 400});
     }
@@ -25,9 +30,9 @@ export async function PUT( request: NextRequest, {params} : {params : {id : numb
     }
 
     // 4. Appel FastAPI 
-    const response = await fetch(`${API_BASE_URL}/composant/${id_composant}`, {
+    const response = await fetch(`${API_BASE_URL}/composants/${id_composant}`, {
       method: 'PUT',
-      headers: {'Content-Type': 'pplication/json'} ,
+      headers: {'Content-Type': 'application/json'} ,
       body: JSON.stringify(UpdateData),
     });
 
@@ -80,7 +85,7 @@ export async function GET(
     );
   }
 
-  // j'attend de la data de type composant .
+    // j'attend de la data de type composant .
   const composant = await response.json();
   return NextResponse.json(composant);
   
@@ -88,10 +93,11 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest, 
-  { params }: { params: { id: string } }  // string !
+    { params }: { params: Promise<{ id: string }> }
 ) {
   // ✅ Parse + validation
-  const id_composant = parseInt(params.id);
+    const { id } = await params;
+    const id_composant = parseInt(id);
   if (isNaN(id_composant) || id_composant <= 0) {
     return NextResponse.json({ error: 'ID invalide' }, { status: 400 });
   }

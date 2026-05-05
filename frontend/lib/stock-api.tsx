@@ -26,7 +26,7 @@ export async function UpdateComposant( id : number , data : ComposantUpdate) : P
 
   console.log(`${typeof(id)}: ${id}`);
 
-  const response = await fetch(`api/stock/${id}`, {
+  const response = await fetch(`/api/stock/${id}`, {
     method: "PUT",
     headers: {
       "Content-type": "application/json"
@@ -42,7 +42,7 @@ export async function UpdateComposant( id : number , data : ComposantUpdate) : P
 }
 
 export async function DeleteComposant(id:number) : Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/composants/${id}`, {
+  const response = await fetch(`/api/stock/${id}`, {
     method: 'DELETE'
   })
 
