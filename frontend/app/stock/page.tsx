@@ -12,7 +12,7 @@ import { UUID } from "crypto";
 import { FaChartSimple } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { Composant, ComposantCreate } from "@/types/type-composant";
-import { AddComposant, UpdateComposant } from "@/lib/stock-api";
+import { AddComposant, DeleteComposant, UpdateComposant } from "@/lib/stock-api";
 import { NextResponse } from "next/server";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -113,6 +113,27 @@ export default function StockPage () {
     //Page pour modifier les compsants : 
     const [editOpen, setEditOpen] = useState<boolean>(false);
     const [currentComposant, setCurrentComposant] = useState<Composant>();
+
+    const handleDelete = async () => {
+        if (!currentComposant) {
+            return;
+        }
+        const confirmed = window.confirm("Supprimer ce composant ?");
+        if (!confirmed) {
+            return;
+        }
+        try {
+            await DeleteComposant(currentComposant.id_composant);
+            setComponents((prev) =>
+                prev.filter((c) => c.id_composant !== currentComposant.id_composant)
+            );
+            setEditOpen(false);
+            setCurrentComposant(undefined);
+        } catch (err) {
+            console.error("Echec de la suppression", err);
+            alert("Impossible de supprimer le composant.");
+        }
+    };
 
     // Configuration des categories 
     const CAT_CONFIG = {
@@ -560,7 +581,7 @@ export default function StockPage () {
                                 </Button>
                             </div>
                             <div className="mx-">
-                                <Button className="w-auto">
+                                <Button type="button" className="w-auto" onClick={handleDelete}>
                                     <FaTrash size={16}/>
                                     Delete
                                 </Button>
