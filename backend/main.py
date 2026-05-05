@@ -105,7 +105,10 @@ def delete_composant(id_composant: int ,db: Session = Depends(get_db)):
     db.delete(composant)
     db.commit()
 
-    collection.delete(ids=[str(id_composant)])
+    try:
+        collection.delete(ids=[str(id_composant)])
+    except Exception as e:
+        print("ERREUR Chroma delete :", e)
     return composant
 
 
@@ -131,24 +134,26 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     db.commit()
     db.refresh(composant)
 
-    try:
-        #5. Modification dans chromaDB
-        image_path = composant.photo_url   
-        desc = f"{composant.nom} {composant.categorie}"  
+    if composant.photo_url:
+        try:
+            #5. Modification dans chromaDB
+            image_path = composant.photo_url
+            desc = f"{composant.nom} {composant.categorie}"
 
-        emb = (embed_image_url(image_path) + embed_text(desc)) / 2
-        collection.update(
-            ids=[id_composant],
-            embeddings=[emb.tolist()],
-            metadatas=[{
-                "nom": composant.nom,
-                "categorie": composant.categorie,
-                "emplacement": composant.emplacement
-            }]
-        )
-    except Exception as e : 
-        print("ERREUR Chroma / embeddings :", e)
-        raise HTTPException(status_code=500, detail="Erreur interne Chroma")
+            emb = (embed_image_url(image_path) + embed_text(desc)) / 2
+            collection.update(
+                ids=[str(id_composant)],
+                embeddings=[emb.tolist()],
+                metadatas=[{
+                    "nom": composant.nom,
+                    "categorie": composant.categorie,
+                    "emplacement": composant.emplacement
+                }]
+            )
+        except Exception as e : 
+            print("ERREUR Chroma / embeddings :", e)
+    else:
+        print("Chroma skip: photo_url manquant pour le composant", id_composant)
     
     return composant
 
