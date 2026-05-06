@@ -1,11 +1,9 @@
 'use client';
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Box, ClipboardList, Cpu, CpuIcon, Filter, MapPin, Package, Plus, Search, User } from "lucide-react"  
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableCell, TableHeader, TableRow, TableBody, TableHead } from "@/components/ui/table";
 import { UUID } from "crypto";
@@ -17,55 +15,75 @@ import { NextResponse } from "next/server";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { FaSave, FaTrash } from "react-icons/fa";
-
-
-
-type component = {
-    id : number
-    nom : string
-    categorie : string
-    reference : string 
-    emplacement : string 
-    quantite : string
-    prix : string
-    photo_url : string 
-}
-
-
+import { FaSave, FaServicestack, FaTrash } from "react-icons/fa";
 
 
 export default function StockPage () {
     const router = useRouter();
     const [components, setComponents] = useState<Composant[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatus, setFilterStatus] = useState<string>("all");
     const [loading, setLoading] = useState(true);
+
+
+    
     // Chargement de donner qui s'effectue qu'au chargement de la page  
-    useEffect(() => {
-    async function loadComponents() {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/stock'); // Appel API correct
-        if (!res.ok) throw new Error('Erreur API');
-        const data: Composant[] = await res.json();
-        setComponents(data);
-      } catch (error) {
-
-        console.error("Erreur lors du chargement :", error);
-
-      } finally {
-
-        setLoading(false);
-      
+    const loadComponents = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/stock');
+            
+            if (!res.ok) {
+            console.error('API Status:', res.status, await res.text());
+            setComponents([]);  // Liste vide
+            return;
+            }
+            
+            const data: Composant[] = await res.json();
+            setComponents(data);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            setComponents([]);
+        } finally {
+            setLoading(false);
         }
+    };
+    
+             
+// Systeme de filtrage : 
+    // Configuration des categories 
+    const CAT_CONFIG = {
+        mechanical : {
+            label: "Mécanique",
+            color: "bg-bleu-300",
+        },
+        electronic: {
+            label: "Electronique",
+            color : "bg-green-300"    
+        },
+        food : {
+            label : "Alimentaire",
+            color : "bg-red-300",
+        },
     }
 
-    loadComponents();
-    
-  }, []);
-             
+    const categories =  ["all", "Mécanique", "Electronique", "Entretien", "Consommable", "Outil" ];
+    const [searchTerm, setSearchTerm] = useState("");
+    const [category, setCategoryStatus] = useState("all");
 
+    const filtered = useMemo(() =>{
+        return components.filter((Composant) =>{
+            const q =  searchTerm.toLowerCase();
+            const matchesSearch = 
+            Composant.nom.toLowerCase().includes(q)||
+            Composant.reference.toLowerCase().includes(q)||
+            Composant.description.toLowerCase().includes(q);
+            const matchesCategory = category === "all" || Composant.categorie === category;
+            return matchesSearch && matchesCategory;
+
+        })
+        
+    }, [searchTerm, category]);
+ 
+    
     // Page Creation de composant.
     const [open, setOpen] = useState<boolean>(false);
     const [form, setForm] = useState<ComposantCreate>({
@@ -76,6 +94,7 @@ export default function StockPage () {
         emplacement: "",
         quantite: 0,
         photo_url: "",
+        description : "",
     });
 
     const handleChange = (
@@ -100,6 +119,7 @@ export default function StockPage () {
                 categorie: "",
                 prix: 0,
                 emplacement: "",
+                description: "",
                 quantite: 0,
                 photo_url: "",
             }); // reset le formulaire important !
@@ -135,22 +155,7 @@ export default function StockPage () {
         }
     };
 
-    // Configuration des categories 
-    const CAT_CONFIG = {
-        mechanical : {
-            label: "Mécanique",
-            color: "bg-bleu-300",
-        },
-        electronic: {
-            label: "Electronique",
-            color : "bg-green-300"    
-        },
-        food : {
-            label : "Alimentaire",
-            color : "bg-red-300",
-        },
-    }
-
+    
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -184,7 +189,7 @@ export default function StockPage () {
                         <FaChartSimple className="h-4 w-4 text-muted-foreground"/>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{Object.keys(CAT_CONFIG).length}</div>
+                        <div className="text-2xl font-bold">{Object.keys(categories).length}</div>
                     </CardContent>
                 </Card>
                 
@@ -205,15 +210,17 @@ export default function StockPage () {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Filter className="h-4 w-4 text-muted-foreground" />
-                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                <Select value={category} onValueChange={setCategoryStatus}>
                                 <SelectTrigger className="w-48">
                                     <SelectValue placeholder="Filtrer par categorie" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="All">Tous les catégories</SelectItem>
-                                    <SelectItem value="alimentaire">Alimentaire</SelectItem>
-                                    <SelectItem value="electronique">Electronique</SelectItem>
-                                    <SelectItem value="mecanique">Mécanique</SelectItem>
+                                    <SelectItem value="all">Tous les catégories</SelectItem>
+                                    <SelectItem value="Mécanique">Mécanique</SelectItem>
+                                    <SelectItem value="Electronique">Electronique</SelectItem>
+                                    <SelectItem value="Consommable">Consommable</SelectItem>
+                                    <SelectItem value="Outil">Outil</SelectItem>
+                                    <SelectItem value="Entretien">Entretien</SelectItem>
                                 </SelectContent>
                                 </Select>
                             </div>
@@ -247,7 +254,7 @@ export default function StockPage () {
                             <TableBody>
                                 {
 
-                                    components.map((c) => {
+                                    filtered.map((c) => {
 
                                             return (
                                                 <TableRow
@@ -257,7 +264,7 @@ export default function StockPage () {
                                                     >
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
-                                                        <User className="h-4 w-4 text-muted-foreground" />
+                                                        <FaServicestack className="h-4 w-4 text-muted-foreground" />
                                                         <div className="font-medium">{c.nom}</div>
                                                         </div>
                                                     </TableCell>
@@ -265,14 +272,14 @@ export default function StockPage () {
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {c.reference}
+                                                        {c.categorie}
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell>
                                                         <div className="flex items-center gap-1 text-sm">
                                                         <Box className="h-3 w-3 text-muted-foreground" />
-                                                        {c.categorie}
+                                                        {c.reference}
                                                         </div>
                                                     </TableCell>
 
@@ -418,7 +425,7 @@ export default function StockPage () {
                                 <Textarea
                                     name="description"
                                     placeholder="Décrivez le composant..."
-                                    className="resize-vertical min-h-[80px]"  // Tailwind resize
+                                    className="resize-vertical min-h-20"  // Tailwind resize
                                     rows={3}
                                 />
                             </div>

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {useRouter} from "next/navigation"; 
 import { FaSearch } from "react-icons/fa";
+import { FaBox, FaBoxesPacking } from "react-icons/fa6";
 
 
 export  function Home() {
@@ -98,8 +99,8 @@ export default function HomePage (){
         onClick={() => router.push("/stock")}
         className="flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-foreground text-background transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-300 md:w-auto"
       >
-        <FaSearch size={14} />
-        <span>Search</span>
+        <FaBox size={14} />
+        <span>Stock</span>
       </button>
 
     </div>
