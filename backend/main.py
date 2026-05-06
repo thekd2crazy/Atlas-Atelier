@@ -137,20 +137,32 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
     if composant.photo_url:
         try:
             #5. Modification dans chromaDB
-            image_path = composant.photo_url
-            desc = f"{composant.nom} {composant.categorie}"
+            urls = [u.strip() for u in composant.photo_url.split(",") if u.strip()]
 
-            emb = (embed_image_url(image_path) + embed_text(desc)) / 2
-            collection.update(
-                ids=[str(id_composant)],
-                embeddings=[emb.tolist()],
-                metadatas=[{
-                    "nom": composant.nom,
-                    "categorie": composant.categorie,
-                    "emplacement": composant.emplacement
-                }]
-            )
-        except Exception as e : 
+            image_embs = []
+            for url in urls:
+                try:
+                    image_embs.append(embed_image_url(url))
+                except Exception as e:
+                    print(f"ERREUR embed_image_url ({url}) :", e)
+
+            if not image_embs:
+                print(f"Chroma skip: aucune image valide pour le composant {id_composant}")
+            else:
+                image_emb = sum(image_embs) / len(image_embs)
+                desc = f"{composant.nom} {composant.categorie}"
+
+                emb = (image_emb + embed_text(desc)) / 2
+                collection.update(
+                    ids=[str(id_composant)],
+                    embeddings=[emb.tolist()],
+                    metadatas=[{
+                        "nom": composant.nom,
+                        "categorie": composant.categorie,
+                        "emplacement": composant.emplacement
+                    }]
+                )
+        except Exception as e :
             print("ERREUR Chroma / embeddings :", e)
     else:
         print("Chroma skip: photo_url manquant pour le composant", id_composant)
@@ -429,10 +441,27 @@ def ingest():
             print(f"Déjà indexé: {item_id}")
             continue
 
-        image_path = item.photo_url
+        if not item.photo_url:
+            print(f"Chroma skip: photo_url manquant pour le composant {item_id}")
+            continue
+
+        urls = [u.strip() for u in item.photo_url.split(",") if u.strip()]
+
+        image_embs = []
+        for url in urls:
+            try:
+                image_embs.append(embed_image_url(url))
+            except Exception as e:
+                print(f"ERREUR embed_image_url ({url}) :", e)
+
+        if not image_embs:
+            print(f"Chroma skip: aucune image valide pour le composant {item_id}")
+            continue
+
+        image_emb = sum(image_embs) / len(image_embs)
         desc = f"{item.nom} {item.categorie}"
 
-        emb = (embed_image_url(image_path) + embed_text(desc)) / 2
+        emb = (image_emb + embed_text(desc)) / 2
 
         ids.append(item_id)
         embeddings.append(emb.tolist())
