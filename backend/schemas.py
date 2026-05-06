@@ -94,3 +94,16 @@ class CSVLigneApercu(BaseModel):
 class CSVImportValidation(BaseModel):
     lignes: List[CSVLigneApercu] # La liste des composants validés par l'utilisateur
     fournisseur: str = "Inconnu" # Ex: "Mouser", "Farnell"
+
+class RechercheTexteRequest(BaseModel):
+    query: str
+
+class RechercheTexteCriteres(BaseModel):
+    categorie: Optional[str] = None
+    valeur: Optional[str] = None
+    boitier: Optional[str] = None
+    projet: Optional[str] = None
+
+class RechercheTexteResponse(BaseModel):
+    criteres: RechercheTexteCriteres
+    composants: List[ComposantResponse]

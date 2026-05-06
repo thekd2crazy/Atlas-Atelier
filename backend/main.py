@@ -1,8 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, status , UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_
 import sqlite3
 import os
+import json
+import requests
 import chromadb
 from clip_utils import embed_image , embed_text, embed_image_url
 import csv
@@ -18,6 +21,9 @@ import uuid
 app = FastAPI(title="Atlas Atelier API")
 client = chromadb.PersistentClient(path="./data/chromadb")
 collection = client.get_or_create_collection(name="components")
+
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3n")
 
 #INITIALISATION DE LA DB DEPUIS SCHEMA.SQL
 def init_db():
@@ -503,6 +509,66 @@ async def recherche_image(file: UploadFile = File(...)):
     os.remove(temp_path)
 
     return results["metadatas"]
+
+EXTRACTION_PROMPT = """Tu extrais des critères de recherche de composants électroniques depuis une requête en français.
+
+Renvoie UNIQUEMENT un JSON avec exactement ces clés (utilise null si non précisé) :
+- "categorie": type du composant (ex: "condensateur", "résistance", "microcontrôleur", "capteur", "LED", "transistor")
+- "valeur": valeur électrique (ex: "100µF", "10kΩ", "3.3V", "16MHz")
+- "boitier": format/boîtier (ex: "CMS", "SMD", "0805", "0603", "DIP-8", "TO-220", "QFN")
+- "projet": nom du projet associé (ex: "Scanner NO2", "Smart Totem", "UveTibi", "Tri plateau repas")
+
+Requête : {query}
+"""
+
+def extract_criteres_from_ollama(query: str) -> dict:
+    response = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={
+            "model": OLLAMA_MODEL,
+            "prompt": EXTRACTION_PROMPT.format(query=query),
+            "format": "json",
+            "stream": False,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    raw = response.json().get("response", "{}")
+    return json.loads(raw)
+
+@app.post("/recherche/texte", response_model=schemas.RechercheTexteResponse)
+def recherche_texte(payload: schemas.RechercheTexteRequest, db: Session = Depends(get_db)):
+    extracted = extract_criteres_from_ollama(payload.query)
+    criteres = schemas.RechercheTexteCriteres(**extracted)
+
+    q = db.query(models.Composant)
+
+    if criteres.categorie:
+        q = q.filter(models.Composant.categorie.ilike(f"%{criteres.categorie}%"))
+
+    if criteres.valeur:
+        v = f"%{criteres.valeur}%"
+        q = q.filter(or_(
+            models.Composant.nom.ilike(v),
+            models.Composant.description.ilike(v),
+        ))
+
+    if criteres.boitier:
+        b = f"%{criteres.boitier}%"
+        q = q.filter(or_(
+            models.Composant.nom.ilike(b),
+            models.Composant.description.ilike(b),
+        ))
+
+    if criteres.projet:
+        q = (
+            q.join(models.BOM, models.BOM.composant_id == models.Composant.id_composant)
+             .join(models.Projet, models.Projet.id_projet == models.BOM.projet_id)
+             .filter(models.Projet.nom.ilike(f"%{criteres.projet}%"))
+        )
+
+    composants = q.all()
+    return schemas.RechercheTexteResponse(criteres=criteres, composants=composants)
 
 # --- IMPORT CSV ---
 
