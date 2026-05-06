@@ -23,7 +23,7 @@ client = chromadb.PersistentClient(path="./data/chromadb")
 collection = client.get_or_create_collection(name="components")
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3n")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3n:e2b")
 
 #INITIALISATION DE LA DB DEPUIS SCHEMA.SQL
 def init_db():
