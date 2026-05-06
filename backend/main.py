@@ -24,6 +24,7 @@ collection = client.get_or_create_collection(name="components")
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3n:e2b")
+OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "300"))
 
 #INITIALISATION DE LA DB DEPUIS SCHEMA.SQL
 def init_db():
@@ -530,45 +531,44 @@ def extract_criteres_from_ollama(query: str) -> dict:
             "format": "json",
             "stream": False,
         },
-        timeout=60,
+        timeout=OLLAMA_TIMEOUT,
     )
     response.raise_for_status()
     raw = response.json().get("response", "{}")
     return json.loads(raw)
 
-@app.post("/recherche/texte", response_model=schemas.RechercheTexteResponse)
+@app.post("/recherche/texte", response_model=list[schemas.ComposantRechercheItem])
 def recherche_texte(payload: schemas.RechercheTexteRequest, db: Session = Depends(get_db)):
     extracted = extract_criteres_from_ollama(payload.query)
     criteres = schemas.RechercheTexteCriteres(**extracted)
 
     q = db.query(models.Composant)
 
-    if criteres.categorie:
-        q = q.filter(models.Composant.categorie.ilike(f"%{criteres.categorie}%"))
+    clauses = []
 
-    if criteres.valeur:
-        v = f"%{criteres.valeur}%"
-        q = q.filter(or_(
-            models.Composant.nom.ilike(v),
-            models.Composant.description.ilike(v),
-        ))
-
-    if criteres.boitier:
-        b = f"%{criteres.boitier}%"
-        q = q.filter(or_(
-            models.Composant.nom.ilike(b),
-            models.Composant.description.ilike(b),
+    for term in (criteres.categorie, criteres.valeur, criteres.boitier):
+        if not term:
+            continue
+        pat = f"%{term}%"
+        clauses.append(or_(
+            models.Composant.nom.ilike(pat),
+            models.Composant.categorie.ilike(pat),
+            models.Composant.reference.ilike(pat),
+            models.Composant.emplacement.ilike(pat),
+            models.Composant.description.ilike(pat),
         ))
 
     if criteres.projet:
         q = (
-            q.join(models.BOM, models.BOM.composant_id == models.Composant.id_composant)
-             .join(models.Projet, models.Projet.id_projet == models.BOM.projet_id)
-             .filter(models.Projet.nom.ilike(f"%{criteres.projet}%"))
+            q.outerjoin(models.BOM, models.BOM.composant_id == models.Composant.id_composant)
+             .outerjoin(models.Projet, models.Projet.id_projet == models.BOM.projet_id)
         )
+        clauses.append(models.Projet.nom.ilike(f"%{criteres.projet}%"))
 
-    composants = q.all()
-    return schemas.RechercheTexteResponse(criteres=criteres, composants=composants)
+    if clauses:
+        q = q.filter(or_(*clauses)).distinct()
+
+    return q.all()
 
 # --- IMPORT CSV ---
 
