@@ -6,9 +6,9 @@ from datetime import datetime
 class ComposantBase(BaseModel):
     nom: str
     reference: str
-    categorie: str
+    categorie: Optional[str] = None
     prix: float
-    emplacement: str
+    emplacement: Optional[str] = None
     quantite: int
     # On met phot_url en Optionnel (permet d'envoyer 'null' si on n'a pas de photo)
     photo_url: Optional[str] = None

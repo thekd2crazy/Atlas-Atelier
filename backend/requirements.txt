@@ -9,3 +9,4 @@ pillow
 numpy
 sqlite-utils
 requests
+openpyxl
