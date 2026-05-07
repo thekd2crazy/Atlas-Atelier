@@ -26,26 +26,31 @@ export default function StockPage () {
 
     
     // Chargement de donner qui s'effectue qu'au chargement de la page  
-    const loadComponents = async () => {
-        try {
-            setLoading(true);
-            const res = await fetch('/api/stock');
-            
-            if (!res.ok) {
-            console.error('API Status:', res.status, await res.text());
-            setComponents([]);  // Liste vide
-            return;
+    useEffect(() => {
+        async function loadComponents() {
+            try {
+                setLoading(true);
+                const res = await fetch('/api/stock');
+                if (!res.ok) {
+                    console.error('API Status:', res.status, await res.text());
+                    setComponents([]);  // Liste vide
+                    return;
+                }
+                const data: Composant[] = await res.json();
+                setComponents(data);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                setComponents([]);
+            } finally {
+                setLoading(false);
             }
-            
-            const data: Composant[] = await res.json();
-            setComponents(data);
-        } catch (error) {
-            console.error('Fetch error:', error);
-            setComponents([]);
-        } finally {
-            setLoading(false);
         }
-    };
+
+        loadComponents();
+        
+    }, []);
+
+    
     
              
 // Systeme de filtrage : 
@@ -74,14 +79,14 @@ export default function StockPage () {
             const q =  searchTerm.toLowerCase();
             const matchesSearch = 
             Composant.nom.toLowerCase().includes(q)||
-            Composant.reference.toLowerCase().includes(q)||
-            Composant.description.toLowerCase().includes(q);
-            const matchesCategory = category === "all" || Composant.categorie === category;
+            Composant.reference.toLowerCase().includes(q);
+            
+            const matchesCategory = category === "all" || Composant.categorie ===  category;
             return matchesSearch && matchesCategory;
 
         })
         
-    }, [searchTerm, category]);
+    }, [searchTerm, category, components]);
  
     
     // Page Creation de composant.
