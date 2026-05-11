@@ -503,11 +503,12 @@ def ingest():
         ids.append(item_id)
         embeddings.append(emb.tolist())
 
-        metadatas.append({
+        meta = {
             "nom": item.nom,
             "categorie": item.categorie,
-            "emplacement": item.emplacement
-        })
+            "emplacement": item.emplacement,
+        }
+        metadatas.append({k: v for k, v in meta.items() if v is not None})
 
     if ids:
         collection.add(
