@@ -5,6 +5,7 @@ export type ComposantCreate = {
   categorie: string;
   prix: number;
   emplacement: string;
+  description: string;
   quantite: number;
   photo_url: string;
 };
@@ -16,6 +17,7 @@ export type Composant = {
     categorie : string
     reference : string 
     emplacement : string 
+    description : string 
     quantite : number | string
     prix : number | string
     photo_url : string 
@@ -27,6 +29,7 @@ export type ComposantUpdate = {
     categorie : string
     reference : string 
     emplacement : string 
+    description: string 
     quantite : number | string 
     prix : number | string 
     photo_url : string 
