@@ -103,6 +103,7 @@ class RechercheTexteCriteres(BaseModel):
     valeur: Optional[str] = None
     boitier: Optional[str] = None
     projet: Optional[str] = None
+    nom_libre: Optional[str] = None
 
 class ComposantRechercheItem(BaseModel):
     nom: str
