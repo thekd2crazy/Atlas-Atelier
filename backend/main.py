@@ -8,7 +8,6 @@ import json
 import requests
 import chromadb
 from clip_utils import embed_image , embed_text, embed_image_url
-from rapidfuzz import fuzz
 import csv
 import io
 
@@ -550,7 +549,6 @@ Renvoie UNIQUEMENT un JSON avec exactement ces clés (utilise null si non préci
 - "valeur": valeur électrique (ex: "100µF", "10kΩ", "3.3V", "16MHz")
 - "boitier": format/boîtier (ex: "CMS", "SMD", "0805", "0603", "DIP-8", "TO-220", "QFN")
 - "projet": nom du projet associé (ex: "Scanner NO2", "Smart Totem", "UveTibi", "Tri plateau repas")
-- "nom_libre": tout mot ou groupe de mots qui ressemble à un nom/référence de composant et qui ne rentre dans aucune autre clé (ex: "ESP32", "NE555", "BC547", "ATmega328P", "DHT22")
 
 Requête : {query}
 """
@@ -570,37 +568,26 @@ def extract_criteres_from_ollama(query: str) -> dict:
     raw = response.json().get("response", "{}")
     return json.loads(raw)
 
-RECHERCHE_TEXTE_LIMIT = 50
-RECHERCHE_TEXTE_RRF_K = 60
-RECHERCHE_TEXTE_FUZZ_MIN = 55  # 0..100, seuil de tolérance rapidfuzz
-
-def _rrf_add(scores: dict, ranked_ids: list, k: int = RECHERCHE_TEXTE_RRF_K):
-    for rank, cid in enumerate(ranked_ids):
-        scores[cid] = scores.get(cid, 0.0) + 1.0 / (k + rank + 1)
-
 @app.post("/recherche/texte", response_model=list[schemas.ComposantRechercheItem])
 def recherche_texte(payload: schemas.RechercheTexteRequest, db: Session = Depends(get_db)):
-    query = payload.query.strip()
-    if not query:
-        return []
-
-    try:
-        extracted = extract_criteres_from_ollama(query)
-    except Exception as e:
-        print(f"Ollama extraction failed: {e}")
-        extracted = {}
+    extracted = extract_criteres_from_ollama(payload.query)
     criteres = schemas.RechercheTexteCriteres(**extracted)
 
-    # --- 1. Candidat SQL : large ILIKE sur termes (query brute + tokens + critères) ---
-    terms = {query, *query.split()}
-    for t in (criteres.categorie, criteres.valeur, criteres.boitier, criteres.nom_libre):
-        if t:
-            terms.add(t)
-    terms = {t.strip() for t in terms if t and t.strip()}
-
     q = db.query(models.Composant)
+
     clauses = []
-    for term in terms:
+
+    name_terms = [payload.query.strip(), *payload.query.split()]
+    seen = set()
+    for term in name_terms:
+        if not term or term.lower() in seen:
+            continue
+        seen.add(term.lower())
+        clauses.append(models.Composant.nom.ilike(f"%{term}%"))
+
+    for term in (criteres.categorie, criteres.valeur, criteres.boitier):
+        if not term:
+            continue
         pat = f"%{term}%"
         clauses.append(or_(
             models.Composant.nom.ilike(pat),
@@ -617,49 +604,10 @@ def recherche_texte(payload: schemas.RechercheTexteRequest, db: Session = Depend
         )
         clauses.append(models.Projet.nom.ilike(f"%{criteres.projet}%"))
 
-    sql_rows = q.filter(or_(*clauses)).distinct().all() if clauses else []
-    sql_ids = [r.id_composant for r in sql_rows]
+    if clauses:
+        q = q.filter(or_(*clauses)).distinct()
 
-    # --- 2. Candidats sémantiques : Chroma sur l'embedding texte de la requête ---
-    chroma_ids: list[int] = []
-    try:
-        emb = embed_text(query).tolist()
-        chroma_res = collection.query(query_embeddings=[emb], n_results=RECHERCHE_TEXTE_LIMIT)
-        chroma_ids = [int(cid) for cid in (chroma_res.get("ids") or [[]])[0]]
-    except Exception as e:
-        print(f"Chroma semantic query failed: {e}")
-
-    # --- 3. Charger tous les candidats en une requête ---
-    candidate_ids = list({*sql_ids, *chroma_ids})
-    if not candidate_ids:
-        return []
-    rows = (
-        db.query(models.Composant)
-        .filter(models.Composant.id_composant.in_(candidate_ids))
-        .all()
-    )
-    by_id = {r.id_composant: r for r in rows}
-
-    # --- 4. Score fuzzy (rapidfuzz) sur le nom ---
-    haystack_query = query.lower()
-    fuzz_scores: dict[int, float] = {}
-    for cid, row in by_id.items():
-        name = (row.nom or "").lower()
-        if not name:
-            continue
-        score = fuzz.token_set_ratio(haystack_query, name)
-        if score >= RECHERCHE_TEXTE_FUZZ_MIN:
-            fuzz_scores[cid] = score
-    fuzz_ranked = sorted(fuzz_scores, key=fuzz_scores.get, reverse=True)
-
-    # --- 5. Fusion RRF : SQL + sémantique + fuzzy ---
-    rrf: dict[int, float] = {}
-    _rrf_add(rrf, sql_ids)
-    _rrf_add(rrf, chroma_ids)
-    _rrf_add(rrf, fuzz_ranked)
-
-    ranked = sorted(rrf, key=rrf.get, reverse=True)[:RECHERCHE_TEXTE_LIMIT]
-    return [by_id[cid] for cid in ranked if cid in by_id]
+    return q.all()
 
 # --- IMPORT CSV ---
 

@@ -10,4 +10,3 @@ numpy
 sqlite-utils
 requests
 openpyxl
-rapidfuzz
