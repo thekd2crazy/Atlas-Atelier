@@ -85,7 +85,37 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
     db.add(nouveau_composant)
     db.commit()
     db.refresh(nouveau_composant) #On récupère l'ID généré
-    
+    if nouveau_composant.photo_url:
+         try:
+            urls = [u.strip() for u in nouveau_composant.photo_url.split(",") if u.strip()]
+       
+            image_embs = []
+            for url in urls:
+                try:
+                    image_embs.append(embed_image_url(url))
+                except Exception as e:
+                    print(f"ERREUR embed_image_url ({url}) :", e)
+
+            if not image_embs:
+                print(f"Chroma skip: aucune image valide pour le composant {nouveau_composant.id_composant}")
+            else:
+                      image_emb = sum(image_embs) / len(image_embs)
+                      desc = f"{nouveau_composant.nom} {nouveau_composant.categorie}"
+      
+                      emb = (image_emb + embed_text(desc)) / 2
+                      collection.add(
+                          ids=[str(nouveau_composant.id_composant)],
+                          embeddings=[emb.tolist()],
+                          metadatas=[{
+                              "nom": nouveau_composant.nom,
+                              "categorie": nouveau_composant.categorie,
+                              "emplacement": nouveau_composant.emplacement
+                          }]
+                      )
+         except Exception as e:
+                  print("ERREUR Chroma / embeddings :", e)
+    else:
+              print("Chroma skip: photo_url manquant pour le composant", nouveau_composant.id_composant)
     return nouveau_composant
 
  
@@ -473,11 +503,12 @@ def ingest():
         ids.append(item_id)
         embeddings.append(emb.tolist())
 
-        metadatas.append({
+        meta = {
             "nom": item.nom,
             "categorie": item.categorie,
-            "emplacement": item.emplacement
-        })
+            "emplacement": item.emplacement,
+        }
+        metadatas.append({k: v for k, v in meta.items() if v is not None})
 
     if ids:
         collection.add(
