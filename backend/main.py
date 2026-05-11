@@ -577,6 +577,14 @@ def recherche_texte(payload: schemas.RechercheTexteRequest, db: Session = Depend
 
     clauses = []
 
+    name_terms = [payload.query.strip(), *payload.query.split()]
+    seen = set()
+    for term in name_terms:
+        if not term or term.lower() in seen:
+            continue
+        seen.add(term.lower())
+        clauses.append(models.Composant.nom.ilike(f"%{term}%"))
+
     for term in (criteres.categorie, criteres.valeur, criteres.boitier):
         if not term:
             continue
