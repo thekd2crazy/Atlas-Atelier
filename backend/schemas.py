@@ -105,14 +105,10 @@ class RechercheTexteCriteres(BaseModel):
     projet: Optional[str] = None
 
 class ComposantRechercheItem(BaseModel):
-    id_composant: int
     nom: str
     reference: str
-    categorie: str
-    prix: float
     emplacement: str
     quantite: int
-    description: Optional[str] = None
 
     class Config:
         from_attributes = True

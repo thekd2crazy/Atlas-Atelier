@@ -147,7 +147,15 @@ def insert_components(conn: sqlite3.Connection, rows: List[Dict[str, Any]]) -> N
 
     sql = (
         "INSERT INTO composants (nom, reference, categorie, description, quantite, emplacement, prix, photo_url) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(reference) DO UPDATE SET "
+        "quantite = composants.quantite + excluded.quantite, "
+        "nom = COALESCE(composants.nom, excluded.nom), "
+        "categorie = COALESCE(composants.categorie, excluded.categorie), "
+        "description = COALESCE(composants.description, excluded.description), "
+        "emplacement = COALESCE(composants.emplacement, excluded.emplacement), "
+        "prix = CASE WHEN composants.prix = 0 THEN excluded.prix ELSE composants.prix END, "
+        "photo_url = COALESCE(composants.photo_url, excluded.photo_url)"
     )
 
     values = [
@@ -191,8 +199,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--wipe",
         choices=["all", "components", "none"],
-        default="all",
-        help="Delete existing rows before import (default: all)",
+        default="none",
+        help="Delete existing rows before import (default: none)",
     )
 
     return parser.parse_args()
