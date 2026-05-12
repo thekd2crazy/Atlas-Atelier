@@ -17,7 +17,7 @@ const res1 = await getOneComposant(id_composant);
 
 
 
-console.log(updatedData) ;
+console.log(updatedData);
 // const res =  UpdateComposant( 4, updatedData );
 // console.log(res)
 

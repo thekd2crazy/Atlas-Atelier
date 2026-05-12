@@ -8,6 +8,7 @@ import {
   Layers3,
   PackageSearch,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { RenderResultMetadata } from "next/dist/server/render-result";
 
 type Item = {
   id: number;
@@ -78,6 +80,12 @@ const data: Item[] = [
     description: "Roulement standard pour pièces mobiles.",
   },
 ];
+
+type ResultMeta = {
+  nom: string;
+  categorie: string;
+  emplacement: string;
+};
 
 export default function SearchPage() {
   
@@ -123,6 +131,45 @@ export default function SearchPage() {
     };
 
   const clearAll = () => setFiles([]);
+
+  // Requete dans le Backend : 
+  
+  const [results, setResults] = useState<ResultMeta[]>([]);
+  const [errorSearch, setErrorSearch] = useState<string | null>(null);
+  const [loadingSearch, setLoadingSearch] = useState<boolean>(false);
+
+  const handleSearch = async () => {
+    if (files.length === 0) return;
+    const file = files[0];
+
+    try {
+      setLoadingSearch(true);
+      setErrorSearch(null);
+      setResults([]);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/search", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`API ${res.status}: ${txt}`);
+      }
+
+      const data = await res.json();
+      // FastAPI renvoie results["metadatas"] → liste de dicts
+      setResults(data as ResultMeta[]);
+    } catch (err: any) {
+      console.error("Erreur recherche image:", err);
+      setErrorSearch(err.message ?? "Erreur lors de la recherche");
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
 
   return (
     <>
@@ -316,13 +363,13 @@ export default function SearchPage() {
                                 ? "bg-indigo-500 shadow-2xl shadow-indigo-500/25" 
                                 : "bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl hover:shadow-indigo-100"
                             }`}>
-                            <UploadCloud 
-                                className={`h-12 w-12 transition-all ${
-                                isDragActive 
-                                    ? "text-white drop-shadow-lg" 
-                                    : "text-slate-400 group-hover:text-indigo-500"
-                                }`} 
-                            />
+                                <UploadCloud 
+                                    className={`h-12 w-12 transition-all ${
+                                    isDragActive 
+                                        ? "text-white drop-shadow-lg" 
+                                        : "text-slate-400 group-hover:text-indigo-500"
+                                    }`} 
+                                />
                             </div>
 
                             {/* Messages */}
@@ -422,8 +469,60 @@ export default function SearchPage() {
                             >
                                 <X className="h-3 w-3 text-slate-500" />
                             </button>
+
+                            {/* BOUTON RECHERCHE */}
+                            <div className="flex justify-end">
+                                <Button
+                                onClick={handleSearch}
+                                disabled={files.length === 0 || loadingSearch}
+                                className="flex items-center gap-2"
+                                >
+                                {loadingSearch ? (
+                                    <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Recherche en cours...
+                                    </>
+                                ) : (
+                                    <>
+                                    <Search className="h-4 w-4" />
+                                    Rechercher à partir de cette image
+                                    </>
+                                )}
+                                </Button>
+                            </div>
                             </div>
                         ))}
+
+                        {/* ERREUR RECHERCHE */}
+                        {errorSearch && (
+                            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                            {errorSearch}
+                            </div>
+                        )}
+
+                        {/* RÉSULTATS RECHERCHE */}
+                        {results.length > 0 && (
+                            <div className="space-y-3 pt-4 border-t">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Search className="h-4 w-4 text-indigo-600" />
+                                Résultats similaires
+                            </h3>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {results.map((r, idx) => (
+                                <Card key={idx} className="border-slate-200">
+                                    <CardContent className="p-4 space-y-1">
+                                    <p className="font-medium">{r.nom}</p>
+                                    <p className="text-sm text-slate-500">{r.categorie}</p>
+                                    <p className="text-xs text-slate-500">
+                                        Emplacement : {r.emplacement}
+                                    </p>
+                                    </CardContent>
+                                </Card>
+                                ))}
+                            </div>
+                             </div>        
+                            
+                        )}
                         </div>
                     </div>
                     )}
