@@ -13,7 +13,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
+
+import * as React from "react"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { CalendarIcon, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
+
 import {
   Archive,
   Plus,
@@ -28,8 +42,9 @@ import {
   Edit3,
   DollarSign,
   FileText,
-  Calendar,
+  CalendarPlus2,
 } from "lucide-react"
+import { NewProjet } from "@/types/type-projet";
 
 interface Projet {
   id_projet: number
@@ -75,20 +90,25 @@ export default function ProjetsDashboard() {
   const [filtre, setFiltre] = useState<"tous" | "actif" | "archive">("tous")
   const [recherche, setRecherche] = useState("")
   const [dialogOuvert, setDialogOuvert] = useState(false)
-  const [nouveauProjet, setNouveauProjet] = useState({
+
+  const [nouveauProjet, setNouveauProjet] = useState<NewProjet>({
     nom: "",
     budget_alloue: 0,
-    description: "",
-    date: new Date().toISOString().split("T")[0],
+    description: null,
+    date: new Date().toISOString().split("T")[0], // "YYYY-MM-DD"
   })
+
+ 
   const [vue, setVue] = useState<"grid" | "list">("grid")
 
+// filtres 
   const projetsFiltres = projets.filter((p) => {
     const matchFiltre = filtre === "tous" || p.statut === filtre
     const matchRecherche = p.nom.toLowerCase().includes(recherche.toLowerCase())
     return matchFiltre && matchRecherche
   })
 
+// Objets utiles
   const budgetUtilise = (projet: Projet) => {
     return Math.round((projet.budget_consomme / projet.budget_alloue) * 100)
   }
@@ -105,6 +125,13 @@ export default function ProjetsDashboard() {
     return "from-red-500 to-orange-500"
   }
 
+  
+// Changement de status 
+  const archiverProjet = (id: number) => {
+    setProjets(projets.map((p) => p.id_projet === id ? { ...p, statut: "archive" as const } : p))
+  }
+
+// Nouveau projet : 
   const creerProjet = () => {
     const projet: Projet = {
       id_projet: projets.length + 1,
@@ -118,10 +145,6 @@ export default function ProjetsDashboard() {
     setProjets([...projets, projet])
     setDialogOuvert(false)
     setNouveauProjet({ nom: "", budget_alloue: 0, description: "", date: new Date().toISOString().split("T")[0] })
-  }
-
-  const archiverProjet = (id: number) => {
-    setProjets(projets.map((p) => p.id_projet === id ? { ...p, statut: "archive" as const } : p))
   }
 
   return (
@@ -289,7 +312,7 @@ export default function ProjetsDashboard() {
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-1 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5" />
+                        <CalendarPlus2 className="h-3.5 w-3.5" />
                         <span>{new Date(projet.date).toLocaleDateString("fr-FR")}</span>
                       </div>
                       {projet.description && (
@@ -378,7 +401,11 @@ export default function ProjetsDashboard() {
             </Card>
           ))}
         </div>
-    )}
+      )}
+
+
+
+
     </div>
     );
 }

@@ -112,8 +112,18 @@ export default function SearchPage() {
 {/* Drag and Drop zone  */} 
   const [files, setFiles] = useState<File[]>([]);
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles((prev) => [...prev, ...acceptedFiles]);
-  }, []);
+  setFiles((prev) => {
+    const merged = [...prev, ...acceptedFiles];
+
+    return merged.filter(
+      (file, index, self) =>
+        index ===
+        self.findIndex(
+          (f) => f.name === file.name && f.size === file.size
+        )
+    );
+  });
+}, []);
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } =
     useDropzone({
@@ -133,7 +143,6 @@ export default function SearchPage() {
   const clearAll = () => setFiles([]);
 
   // Requete dans le Backend : 
-  
   const [results, setResults] = useState<ResultMeta[]>([]);
   const [errorSearch, setErrorSearch] = useState<string | null>(null);
   const [loadingSearch, setLoadingSearch] = useState<boolean>(false);
@@ -430,7 +439,7 @@ export default function SearchPage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFiles([])}
+                            onClick={clearAll}
                             className="text-sm"
                         >
                             Tout effacer
@@ -438,45 +447,49 @@ export default function SearchPage() {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                        {files.map((file, index) => (
-                            <div
-                            key={index}
-                            className="group relative p-3 bg-gradient-to-br from-white/70 to-slate-50 rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden h-28 flex flex-col"
-                            >
-                            {/* Icône fichier */}
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                                {file.type.startsWith("image/") ? (
-                                    <Image className="h-4 w-4 text-indigo-600" />
-                                ) : (
-                                    <FileText className="h-4 w-4 text-slate-600" />
-                                )}
-                                </div>
-                                <span className="text-xs font-medium text-slate-900 truncate flex-1">
-                                {file.name}
-                                </span>
-                            </div>
-
-                            {/* Taille */}
-                            <p className="text-xs text-slate-500">
-                                {(file.size / 1024).toFixed(1)} Ko
-                            </p>
-
-                            {/* Bouton supprimer */}
-                            <button
-                                onClick={() => removeFile(index)}
-                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-white/90 hover:bg-white transition-all shadow-lg"
-                            >
-                                <X className="h-3 w-3 text-slate-500" />
-                            </button>
-
-                            {/* BOUTON RECHERCHE */}
-                            <div className="flex justify-end">
-                                <Button
-                                onClick={handleSearch}
-                                disabled={files.length === 0 || loadingSearch}
-                                className="flex items-center gap-2"
+                            {files.map((file, index) => (
+                                <div
+                                key={index}
+                                className="group relative p-3 bg-gradient-to-br from-white/70 to-slate-50 rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden h-28 flex flex-col"
                                 >
+                                {/* Icône fichier */}
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                    {file.type.startsWith("image/") ? (
+                                        <Image className="h-4 w-4 text-indigo-600" />
+                                    ) : (
+                                        <FileText className="h-4 w-4 text-slate-600" />
+                                    )}
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-900 truncate flex-1">
+                                    {file.name}
+                                    </span>
+                                </div>
+
+                                {/* Taille */}
+                                <p className="text-xs text-slate-500">
+                                    {(file.size / 1024).toFixed(1)} Ko
+                                </p>
+
+                                {/* Bouton supprimer */}
+                                <button
+                                    onClick={() => removeFile(index)}
+                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-white/90 hover:bg-white transition-all shadow-lg"
+                                >
+                                    <X className="h-3 w-3 text-slate-500" />
+                                </button>
+
+                                
+                                </div>
+                            ))}
+
+                        {/* BOUTON RECHERCHE */}
+                        <div className="flex justify-end">
+                            <Button
+                            onClick={handleSearch}
+                            disabled={files.length === 0 || loadingSearch}
+                            className="flex items-center gap-2"
+                            >
                                 {loadingSearch ? (
                                     <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -488,10 +501,8 @@ export default function SearchPage() {
                                     Rechercher à partir de cette image
                                     </>
                                 )}
-                                </Button>
-                            </div>
-                            </div>
-                        ))}
+                            </Button>
+                        </div>
 
                         {/* ERREUR RECHERCHE */}
                         {errorSearch && (
@@ -511,11 +522,11 @@ export default function SearchPage() {
                                 {results.map((r, idx) => (
                                 <Card key={idx} className="border-slate-200">
                                     <CardContent className="p-4 space-y-1">
-                                    <p className="font-medium">{r.nom}</p>
-                                    <p className="text-sm text-slate-500">{r.categorie}</p>
-                                    <p className="text-xs text-slate-500">
-                                        Emplacement : {r.emplacement}
-                                    </p>
+                                        <p className="font-medium">{r.nom}</p>
+                                        <p className="text-sm text-black">{r.categorie}</p>
+                                        <p className="text-xs text-black">
+                                            Emplacement : {r.emplacement}
+                                        </p>
                                     </CardContent>
                                 </Card>
                                 ))}
