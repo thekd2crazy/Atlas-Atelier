@@ -28,11 +28,9 @@ const API_URL = "http://localhost:3000/api/search";
 async function testSearch() {
   try {
     // Création d'un faux fichier image
-    const blob = new Blob(["fake image content"], {
-      type: "image/png",
-    });
+    const imageBlob = await fetch("public/Arduino.png").then((r) => r.blob());
 
-    const file = new File([blob], "test.png", {
+    const file = new File([imageBlob], "Arduino.png", {
       type: "image/png",
     });
 

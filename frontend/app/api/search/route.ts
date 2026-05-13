@@ -39,14 +39,15 @@ export async function POST(request: NextRequest) {
 
     // 4. Récupérer les résultats (metadatas) de FastAPI
     const result = await fastApiResponse.json();
+    const flat = Array.isArray(result?.[0]) ? result[0] : result;
 
     // 5. Retourner au frontend
-    return NextResponse.json(result);
+    return NextResponse.json(flat);
   } catch (error) {
     console.error("Erreur route /api/recherche/image :", error);
     return NextResponse.json(
       { error: "Erreur serveur Next.js" },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }
