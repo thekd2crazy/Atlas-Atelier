@@ -182,9 +182,17 @@ Notes:
 ## Perimetre fonctionnel
 Ce README couvre uniquement inventaire, projets et BOM. Les endpoints IA/recherche sont documentes ailleurs.
 
+
+
 ## Déploiement
 
+Pour déployer en production le contenu du main gitHub
+- Aller dans le dossier du RPI ai-stock/Atlas-Atelier/  
+- git pull 
+- docker compose up -d --build
+
 ### Adresse site local :   http://172.16.36.177:3000
+
 
 ### Démarage automatique via Systemd
 
@@ -203,3 +211,17 @@ Commandes utiles:
 - sudo systemctl stop atlas-atelier
 - sudo systemctl start atlas-atelier
 - sudo journalctl -u atlas-atelier -f
+
+## Sauvegarde db et Cron
+
+- Les sauvegardes db sqlite et chromadb sont enregistrés dans le dossier : /media/neurogreen/PHILIPS UFD/
+
+- Le script de sauvegarde backup.sh est contenu dans le fichier : /home/neurogreen
+
+- Le Cron est lancé pour tous les jours à 17h  : 
+
+- Un journal de sauvegarde est enregistré dans le fichier /home/neurogreen/backup.log
+
+crontab -e
+
+0 17 * * * /home/neurogreen/backup.sh >> /home/neurogreen/backup.log 2>&1
