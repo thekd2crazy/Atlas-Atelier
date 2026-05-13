@@ -18,7 +18,7 @@ export default function Navbar() {
 
         <nav className="bg-transparent  shadow-sm">
             <div className="max-w-6xl mx-auto px-4">
-                <div className="flex justify-between items-center h-16">
+                <div className="flex justify-between items-center h-26">
 
                     {/* Logo */}
                     <Link href="/" className="text-xl font-bold text-white items-center  flex px-7">
@@ -27,11 +27,27 @@ export default function Navbar() {
                     </Link>
 
                     {/* Desktop menu */}
-                    <div className="hidden md:flex space-x-6 text-white " >
-                        <Link href="/" className=" relative group block hover:text-green-200 flex px- space-x-4 items-center-safe "> <FaHome size={21}/> <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-black text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible z-5 whitespace-nowrap">Home</div></Link>
-                        <Link href="/search" className="relative group block hover:text-green-200 hover:-underline-offset-2 flex px-4 space-x-4 items-center-safe"><FaSearch size={21} className="group"/> <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-black text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible z-5whitespace-nowrap">Search</div></Link>
-                        <Link href="/stock" className="relative group block hover:text-green-200 flex px-4 space-x-4 items-center-safe"><FaBoxes size={21}/> <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-black text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible z-5 whitespace-nowrap">Stock</div> </Link>
-                        <Link href="/dashboard" className="relative group block hover:text-green-200 flex px-4 space-x-4 items-center-safe"> <BarChart3 size={21}/> <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-black text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible z-5 whitespace-nowrap">Dashboard</div> </Link> 
+                    <div className="hidden md:flex space-x-6 text-black " >
+                        <Link href="/" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
+                         <FaHome className="mx-auto" size={21} />
+                         <span className=" ">Home</span>
+                        </Link>
+                        <Link href="/search" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
+                         <FaSearch className="mx-auto" size={21}/>
+                         <span>Search</span>
+                        </Link>
+                        <Link href="/stock" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
+                         <FaBoxes className="mx-auto" size={21}/>
+                         <span>Stock</span>
+                        </Link>
+                        <Link href="/dashboard" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
+                         <BarChart3 className="mx-auto" size={21}/>
+                         <span>Dashboard</span>
+                        </Link>
+                        <Link href="/projets" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
+                         <BarChart3 className="mx-auto" size={21}/>
+                         <span>Project</span>
+                        </Link>
                     </div>
 
                     {/* Hamburger */}
