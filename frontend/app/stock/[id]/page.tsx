@@ -26,7 +26,7 @@ export default async function StockDetail({ params }: Props) {
 
     return(
          <div className="container mx-auto p-6">
-        `    <div className="flex justify-between mb-6">
+            <div className="flex justify-between mb-6">
                 <h1 className="text-3xl font-bold">{composant.nom}</h1>
                 <Button asChild>
                 <Link href={`/stock/${id}/edit`}>
@@ -34,7 +34,7 @@ export default async function StockDetail({ params }: Props) {
                     Modifier
                 </Link>
                 </Button>
-            </div>`
+            </div>
 
             <div className="grid md:grid-cols-2 gap-8">
                 {composant.photo_url && (
