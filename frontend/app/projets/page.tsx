@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useEffect} from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/dialog"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, set } from "date-fns"
 import { fr } from "date-fns/locale"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { CalendarDays, CalendarIcon, FolderPlus, Loader2, Wallet } from "lucide-react"
 import { toast } from "sonner"
 
 import { Textarea } from "@/components/ui/textarea"
@@ -44,21 +44,15 @@ import {
   FileText,
   CalendarPlus2,
 } from "lucide-react"
-import { NewProjet } from "@/types/type-projet";
+import { NewProjet, Projet } from "@/types/type-projet";
+import { Separator } from "@/components/ui/separator";
+import { AddProjet, archiverProjet } from "@/lib/projet";
 
-interface Projet {
-  id_projet: number
-  nom: string
-  budget_alloue: number
-  budget_consomme: number
-  description: string | null
-  date: string
-  statut: "actif" | "archive"
-}
+
 
 export default function ProjetsDashboard() {
   
-    const [projets, setProjets] = useState<Projet[]>([
+  const [projets4, setProjets4] = useState<Projet[]>([
     {
       id_projet: 1,
       nom: "Projet PCB Alim 12V",
@@ -87,19 +81,39 @@ export default function ProjetsDashboard() {
       statut: "actif",
     },
   ])
-  const [filtre, setFiltre] = useState<"tous" | "actif" | "archive">("tous")
-  const [recherche, setRecherche] = useState("")
-  const [dialogOuvert, setDialogOuvert] = useState(false)
 
-  const [nouveauProjet, setNouveauProjet] = useState<NewProjet>({
-    nom: "",
-    budget_alloue: 0,
-    description: null,
-    date: new Date().toISOString().split("T")[0], // "YYYY-MM-DD"
-  })
-
- 
+  const [projets, setProjets] = useState<Projet[]>([]);
+  const [filtre, setFiltre] = useState<"tous" | "actif" | "archive">("tous") ; 
+  const [recherche, setRecherche] = useState("");
+  const [dialogOuvert, setDialogOuvert] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [loading, setLoading] = useState(true);
   const [vue, setVue] = useState<"grid" | "list">("grid")
+// Afficher les composants 
+  useEffect(() => {
+      async function loadProjects() {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/projets');
+            if (!res.ok) {
+                console.error('API Status:', res.status, await res.text());
+                setProjets([]);  // Liste vide
+                return;
+            }
+            const data: Projet[] = await res.json();
+            setProjets(data);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            setProjets([]);
+        } finally {
+            setLoading(false);
+        }
+      }
+
+      loadProjects();
+          
+      }, []);
 
 // filtres 
   const projetsFiltres = projets.filter((p) => {
@@ -127,26 +141,87 @@ export default function ProjetsDashboard() {
 
   
 // Changement de status 
-  const archiverProjet = (id: number) => {
-    setProjets(projets.map((p) => p.id_projet === id ? { ...p, statut: "archive" as const } : p))
+ const handleArchive = async (id: number) => {
+  try {
+    if (!id || !Number.isInteger(id)) {
+      toast.error("ID du projet invalide");
+      return;
+    }
+
+    const projet = projets.find(p => p.id_projet === id);
+    if (!projet) {
+      toast.error("Projet non trouvé");
+      return;
+    }
+
+    const updatedProjet = await archiverProjet(id);
+
+    setProjets((prev) =>
+      prev.map((p) =>
+        p.id_projet === id ? updatedProjet : p
+      )
+    );
+
+    toast.success(`Projet "${projet.nom}" archivé avec succès`);
+  } catch (error) {
+    console.error("Erreur archivage:", error);
+    toast.error("Impossible d'archiver le projet");
   }
+};
 
 // Nouveau projet : 
-  const creerProjet = () => {
-    const projet: Projet = {
-      id_projet: projets.length + 1,
-      nom: nouveauProjet.nom,
-      budget_alloue: nouveauProjet.budget_alloue,
-      budget_consomme: 0,
-      description: nouveauProjet.description,
-      date: nouveauProjet.date,
-      statut: "actif",
-    }
-    setProjets([...projets, projet])
-    setDialogOuvert(false)
-    setNouveauProjet({ nom: "", budget_alloue: 0, description: "", date: new Date().toISOString().split("T")[0] })
-  }
+  const [open, setOpen] = useState<boolean>(false);
+  const [form, setForm] = useState<NewProjet>({
+    nom: "",
+    budget_alloue: 0,
+    description: null,
+    date: new Date().toISOString().split("T")[0], // "YYYY-MM-DD"
+  });
 
+  const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({
+        ...prev,
+        [name]: name === "budget_alloue" ? Number(value) : value,
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!form.nom.trim()) {
+            toast.error("Le nom du projet est requis");
+            return;
+        }
+        
+        setLoading(true);
+        try{
+            const res = await AddProjet(form);
+            
+            // Ajouter le nouveau projet à la liste
+            setProjets((prev) => [...prev, res]);
+            
+            toast.success("Projet créé avec succès!");
+            
+            setForm({
+              nom: "",
+              budget_alloue: 0,
+              description: null,
+              date: new Date().toISOString().split("T")[0],
+            });
+            
+            setOpen(false);
+        } 
+        catch (error) {
+            console.error("Erreur création projet:", error);
+            toast.error("Impossible de créer le projet");
+        }
+        finally {
+            setLoading(false);
+        }
+    };
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* En-tête */}
@@ -164,7 +239,7 @@ export default function ProjetsDashboard() {
             </div>
             <Button 
               className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-              onClick={() => setDialogOuvert(true)}
+              onClick={() => setOpen(true)}
             >
               <Plus className="h-4 w-4" />
               Nouveau projet
@@ -281,7 +356,7 @@ export default function ProjetsDashboard() {
           </CardContent>
         </Card>
       </div>
-
+      <Separator/>
       {/* Liste des projets */}
       {projetsFiltres.length === 0 ? (
         <Card>
@@ -289,7 +364,7 @@ export default function ProjetsDashboard() {
             <FolderOpen className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-500 text-lg font-medium">Aucun projet trouvé</p>
             <p className="text-slate-400 text-sm mt-1">Crée un nouveau projet pour commencer</p>
-            <Button className="mt-4" onClick={() => setDialogOuvert(true)}>
+            <Button className="mt-4" >
               <Plus className="h-4 w-4 mr-2" />
               Nouveau projet
             </Button>
@@ -299,6 +374,7 @@ export default function ProjetsDashboard() {
         <div className={vue === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
           {projetsFiltres.map((projet) => (
             <Card
+              onClick={()=> setDialogOuvert(true)}
               key={projet.id_projet}
               className={`border-slate-200 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 cursor-pointer group ${
                 vue === "list" ? "flex flex-col sm:flex-row sm:items-center sm:gap-6" : ""
@@ -315,12 +391,7 @@ export default function ProjetsDashboard() {
                         <CalendarPlus2 className="h-3.5 w-3.5" />
                         <span>{new Date(projet.date).toLocaleDateString("fr-FR")}</span>
                       </div>
-                      {projet.description && (
-                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t">
-                          <FileText className="h-3.5 w-3.5" />
-                          <span className="truncate">{projet.description}</span>
-                        </div>
-                      )}
+                      
                     </CardDescription>
                   </div>
                   <Badge 
@@ -384,7 +455,7 @@ export default function ProjetsDashboard() {
                     size="sm" 
                     variant="ghost" 
                     className="text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    onClick={() => archiverProjet(projet.id_projet)}
+                    onClick={() => handleArchive(projet.id_projet)}
                   >
                     <Archive className="h-4 w-4" />
                   </Button>
@@ -403,9 +474,150 @@ export default function ProjetsDashboard() {
         </div>
       )}
 
+      {/* Dialog de création projet */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-8 text-white relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,white,transparent_40%)]" />
 
+              <DialogHeader className="relative z-10 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-lg">
+                  <FolderPlus className="h-7 w-7" />
+                </div>
 
+                <DialogTitle className="text-3xl font-bold tracking-tight">
+                  Créer un projet
+                </DialogTitle>
 
+                <DialogDescription className="text-indigo-100 text-base leading-relaxed max-w-lg">
+                  Organise tes projets, définis un budget et centralise les
+                  informations importantes dès le départ.
+                </DialogDescription>
+              </DialogHeader>
+          </div> 
+          <div className="p-8 bg-gradient-to-b from-white to-slate-50">
+            <div className="grid gap-6">
+              <Card className="rounded-2xl border-slate-200/70 shadow-sm p-5 bg-white/80 backdrop-blur-sm">
+                
+                <div className="grid gap-5">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700">
+                      Nom du projet
+                    </Label>
+
+                    <Input
+                      name="nom"
+                      placeholder="Ex: Station météo connectée"
+                      value={form.nom}
+                      onChange={handleChange}
+                      className="h-12 rounded-xl border-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-indigo-500" />
+                          Budget alloué
+                        </Label>
+
+                        <div className="relative">
+                          <Input
+                            name="budget_alloue"
+                            type="number"
+                            min={0}
+                            placeholder="5000"
+                            value={form.budget_alloue}
+                            onChange={handleChange}
+                            className="h-12 rounded-xl border-slate-200 pr-12 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                          />
+
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">
+                            €
+                          </span>
+                        </div>
+                      </div>
+
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-indigo-500" />
+                          Date
+                        </Label>
+
+                        <div className="relative">
+                          <Input
+                            name="date"
+                            type="date"
+                            min={0}
+                            value={form.date}
+                            onChange={handleChange}
+                            className="h-12 rounded-xl border-slate-200 pr-12 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-indigo-500" />
+                          Description
+                        </Label>
+
+                        <div className="relative">
+                          <Textarea
+                            name="description"
+                            placeholder="Décris rapidement les objectifs, contraintes ou informations utiles du projet..."
+                            value={form.description || ""}
+                            onChange={handleChange}
+                            rows={3}
+                            className="min-h-35 rounded-2xl border-slate-200 resize-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                  </div>
+
+                </div>
+              
+              </Card>
+              <DialogFooter className="flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl h-11"
+                >
+                  Annuler
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={loading || form.nom.trim() === ""}
+                  className="rounded-xl h-11 px-6 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/20"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <FolderPlus className="mr-2 h-4 w-4" />
+                      Créer le projet
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>            
+            </div>
+          </div>        
+        </form>           
+        </DialogContent>
+      </Dialog>
+        
     </div>
     );
 }
