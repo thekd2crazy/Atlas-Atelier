@@ -23,40 +23,30 @@ const id_composant = 3;
 // console.log(res1)
 
 
-const API_URL = "http://localhost:3000/api/search";
 
-async function testSearch() {
-  try {
-    // Création d'un faux fichier image
-    const imageBlob = await fetch("public/Arduino.png").then((r) => r.blob());
 
-    const file = new File([imageBlob], "Arduino.png", {
-      type: "image/png",
-    });
+// Archiver le projet #123
+const response = await fetch('/api/projets/1/archiver', {
+  method: 'PATCH',
+});
+const projetArchive = await response.json();
 
-    console.log("Faux fichiers ")
-    // Création FormData
-    const formData = new FormData();
-    formData.append("file", file);
+console.log(projetArchive);
 
-    console.log("Envoi du fichier...");
+// get()
+const projet = await fetch('/api/projets/123').then(res => res.json());
+// → Proxy vers /projets/123 avec validation intégrée
 
-    // Requête vers Next.js
-    const response = await fetch(API_URL, {
-      method: "POST",
-      body: formData,
-    });
+// curl http://localhost:3000/api/projets/abc  → 400 "ID invalide"
+// curl http://localhost:3000/api/projets/999  → 404 si inexistant
+// curl http://localhost:3000/api/projets/123  → projet JSON
 
-    console.log("Status :", response.status);
+// test Update() pour la partie projet 
+{/*
+  
+  curl -X PUT http://localhost:3000/api/projets/123 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ton-token" \
+  -d '{"nom": "Projet mis à jour", "budget_alloue": 75000}'
 
-    // Lecture résultat
-    const result = await response.json();
-
-    console.log("Résultat API :");
-    console.dir(result, { depth: null });
-  } catch (error) {
-    console.error("Erreur test :", error);
-  }
-}
-
-testSearch();
+*/}
