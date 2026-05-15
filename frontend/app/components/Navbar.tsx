@@ -16,7 +16,7 @@ export default function Navbar() {
 
     return (
 
-        <nav className="bg-transparent  shadow-sm">
+        <nav className="bg-transparent  shadow-sm relative z-50">
             <div className="max-w-6xl mx-auto px-4">
                 <div className="flex justify-between items-center h-26">
 
@@ -52,7 +52,7 @@ export default function Navbar() {
 
                     {/* Hamburger */}
                     <button
-                        className="md:hidden text-white"
+                        className="md:hidden text-black"
                         onClick={() => setOpen(!open)}
                     >
                         <Hamburger />
@@ -62,17 +62,17 @@ export default function Navbar() {
 
             {/* Mobile menu */}
             {open && (
-                <div className="md:hidden bg-transparent   py-3">
+                <div className="md:hidden absolute left-0 right-0 top-full bg-white shadow-lg z-50 py-3">
                     <Link
                         href="/"
-                        className="block px-4 py-2 hover:bg-green-200 text-white space-x-3 flex-2"
+                        className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
-                       <FaHome size={19}/> Home 
+                       <FaHome size={19} className="space-x-3 "/> Home 
                     </Link>
                     <Link
                         href="/search"
-                        className="block px-4 py-2 hover:bg-green-200 text-white space-x-3 flex-2"
+                        className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
                         <FaSearch size={19 }/> Search
@@ -80,7 +80,7 @@ export default function Navbar() {
 
                     <Link
                         href="/stock"
-                        className="block px-4 py-2 hover:bg-green-200 text-white space-x-3 flex-2"
+                        className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
                         <FaBoxes size={19}/> Stock 
@@ -88,7 +88,7 @@ export default function Navbar() {
 
                     <Link
                         href="/dashboard"
-                        className="block px-4 py-2 hover:bg-green-200 text-white space-x-3 flex-2"
+                        className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
                         <BarChart3 size={19}/> Dashboard 
