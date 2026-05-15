@@ -14,3 +14,11 @@ export type NewProjet = {
   description: string | null
   date: string
 }
+
+export type ProjetUpdate ={
+  nom?: string
+  budget_alloue?: number
+  description?: string
+  date: string // ou Date
+  statut?: 'actif' | "archive"
+}
