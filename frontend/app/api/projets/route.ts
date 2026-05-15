@@ -1,50 +1,62 @@
 // app/api/projets/route.ts
+import { NewProjet, Projet } from "@/types/type-projet";
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.BACKEND_URL ??
-  process.env.VITE_API_URL ??
-  "http://localhost:8000";
+const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
 
-async function fetchFastAPI(
-  path: string,
-  options?: RequestInit
-): Promise<NextResponse> {
-  const url = `${API_BASE_URL}${path}`;
-  const res = await fetch(url, options);
-
-  const contentType = res.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  }
-
-  const text = await res.text();
-  return new NextResponse(text, { status: res.status });
-}
-
+// Prendre un projet 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type");
+  try {
+    const response = await fetch(`${API_BASE_URL}/projets`, {
+      cache: 'no-store',
+    });
 
-  let path = "/projets";
-  if (type === "actif") {
-    path = "/projets/actif";
-  } else if (type === "archive") {
-    path = "/projets/archive";
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch projets' },
+        { status: response.status }
+      );
+    }
+
+    const projets: Projet[] = await response.json();
+    return NextResponse.json(projets);
+  } catch (error) {
+    console.error('Error fetching projets:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-
-  return fetchFastAPI(path, { method: "GET" });
 }
 
+// Creer un projet : 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  try {
+    const data: NewProjet = await request.json(); // Lit le body client
 
-  return fetchFastAPI("/projets", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+    const response = await fetch(`${API_BASE_URL}/projets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data), // Forward exact
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Impossible de créer un projet' },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
+    return NextResponse.json(result, { status: 200}); // Retourne le nouveau composant
+  } 
+  
+  catch (error) {
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    );
+  }
 }
