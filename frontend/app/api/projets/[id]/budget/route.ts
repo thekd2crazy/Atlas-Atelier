@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { Projet } from '@/types/type-projet'; // Type correspondant à schemas.ProjetBudget
 
+const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "http://localhost:8000";
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_projet = params.id; // Extrait de /api/projets/123/budget
+    const { id } = await params;
+    const id_projet = id; // Extrait de /api/projets/123/budget
 
     const response = await fetch(
-      `${process.env.API_BASE_URL}/projets/${id_projet}/budget`,
+      `${API_BASE_URL}/projets/${id_projet}/budget`,
       { cache: 'no-store' } // Données fraîches pour budgets
     );
 
