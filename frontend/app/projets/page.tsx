@@ -47,6 +47,7 @@ import {
 import { NewProjet, Projet } from "@/types/type-projet";
 import { Separator } from "@/components/ui/separator";
 import { AddProjet, archiverProjet } from "@/lib/projet";
+import { useRouter } from "next/navigation";
 
 
 
@@ -81,6 +82,12 @@ export default function ProjetsDashboard() {
       statut: "actif",
     },
   ])
+
+  const router = useRouter();
+
+  const goToPage = () => {
+    router.push("/projets");
+  };
 
   const [projets, setProjets] = useState<Projet[]>([]);
   const [filtre, setFiltre] = useState<"tous" | "actif" | "archive">("tous") ; 
@@ -446,6 +453,7 @@ export default function ProjetsDashboard() {
                   size="sm" 
                   variant="outline" 
                   className="w-full group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors"
+                  onClick={() => router.push(`/projets/${projet.id_projet}`)}
                 >
                   <FolderOpen className="h-4 w-4 mr-1.5" />
                   Ouvrir
