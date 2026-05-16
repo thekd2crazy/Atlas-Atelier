@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "htt
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
 
   try {
@@ -57,7 +57,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params; // await the params

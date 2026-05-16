@@ -7,14 +7,15 @@ export async function DELETE(
   {
     params,
   }: {
-    params: {
+    params: Promise<{
       id: string;
       composantid: string;
-    };
+    }>;
   }
 ) {
-    const id_projet = Number(params.id);
-    const id_composant = Number(params.composantid);
+    const { id, composantid } = await params;
+    const id_projet = Number(id);
+    const id_composant = Number(composantid);
 
     if (isNaN(id_composant) || isNaN(id_composant)) {
         console.error("Invalid IDs", {
@@ -70,17 +71,18 @@ export async function PATCH(
   {
     params,
   }: {
-    params: {
+    params: Promise<{
       id: string;
       composantid: string;
-    };
+    }>;
   }
 ) {
   try {
+    const { id, composantid } = await params;
     const body = await request.json();
 
     const response = await fetch(
-      `${API_BASE_URL}/projets/${params.id}/bom/${params.composantid}`,
+      `${API_BASE_URL}/projets/${id}/bom/${composantid}`,
       {
         method: "PATCH",
         headers: {

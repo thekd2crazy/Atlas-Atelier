@@ -5,13 +5,14 @@ const API_BASE_URL = process.env.BACKEND_URL ?? process.env.VITE_API_URL ?? "htt
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_projet = params.id; // Récupéré de l'URL /api/projets/123/archiver
+    const { id } = await params;
+    const id_projet = id; // Récupéré de l'URL /api/projets/123/archiver
 
     const response = await fetch(
-      `${process.env.API_BASE_URL}/projets/${id_projet}/archiver`,
+      `${API_BASE_URL}/projets/${id_projet}/archiver`,
       {
         method: 'PATCH',
         headers: {
