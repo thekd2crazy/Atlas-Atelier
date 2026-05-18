@@ -20,7 +20,6 @@ Aucune authentification : l'application est accessible à tout poste connecté a
 | **Home** | Page d'accueil et présentation |
 | **Search** | Recherche d'un composant par texte ou par photo |
 | **Stock** | Liste, ajout, modification, suppression de composants |
-| **Dashboard** | Zone d'import de fichiers (CSV/Excel) |
 | **Project** | Suivi des projets et de leurs BOM |
 
 ---
@@ -58,6 +57,21 @@ Aucune authentification : l'application est accessible à tout poste connecté a
 1. Glisse-dépose une **image** (JPG/PNG/WebP) ou un **PDF** dans la zone (max 10 Mo, 10 fichiers).
 2. Bouton **« Rechercher à partir de cette image »**.
 3. Les composants visuellement similaires (CLIP + ChromaDB) sont affichés avec **nom**, **catégorie** et **emplacement**.
+
+### Lancer l'ingestion (réindexation des images)
+Bouton **« Lancer l'ingestion »** en haut à droite de la zone de dépôt. Il (ré)indexe dans la base vectorielle Chroma tous les composants ayant un champ `photo_url`.
+
+**Quand le lancer**
+- Après un import en masse de composants (Excel, CSV).
+- Après avoir ajouté ou modifié un composant dont la `photo_url` a changé.
+- Si la recherche par image ne retourne aucun résultat alors qu'un composant correspondant existe bien en stock (indice : index désynchronisé).
+- À la première mise en service de l'environnement, quand l'index Chroma est vide.
+
+**Quand ne pas le lancer**
+- Après une simple modif de quantité, prix ou emplacement (ces champs ne sont pas embeddés).
+- En pleine journée sur le serveur prod : l'opération télécharge et embed chaque image, ce qui prend plusieurs minutes et bloque le backend pendant ce temps.
+
+Un **dialog de confirmation** s'affiche systématiquement avant le déclenchement. Un toast vert confirme la fin de l'opération.
 
 ---
 
@@ -106,16 +120,7 @@ Le BOM (Bill of Materials) liste les composants requis pour un projet.
 
 ## 7. Import en masse de composants
 
-### Import CSV (Mouser / Farnell) — via `/dashboard`
-1. Dépose le CSV exporté du fournisseur (séparateur `;`).
-2. **Aperçu** : chaque ligne reçoit un statut **NOUVEAU** ou **EXISTANT**.
-3. **Valider** : les références existantes voient leur quantité incrémentée ; les nouvelles sont créées avec catégorie *Import* et emplacement *Bureau*.
-
-Colonnes attendues (au moins) :
-- `Reference` ou `Mouser Part No`
-- `Description` ou `Nom`
-- `Prix`
-- `Quantite` ou `Qty`
+> L'ancienne page **Dashboard** d'import CSV a été retirée. L'import se fait désormais côté serveur, via le script Excel ci-dessous (les endpoints `POST /api/stock/import/apercu` et `/valider` restent disponibles pour un usage scripté).
 
 ### Import Excel (administrateur)
 Lancé manuellement sur le serveur :
@@ -126,6 +131,8 @@ python scripts/import_excel_to_db.py --excel ..\Inventaire_Electronique.xlsx --d
 ```
 
 Colonnes requises : `nom`, `reference`. Optionnelles : `categorie`, `description`, `quantite`, `emplacement`, `prix`, `photo_url`.
+
+> Après tout import en masse, pense à lancer **l'ingestion** depuis la page Search (§ 4) pour mettre à jour l'index image.
 
 ---
 

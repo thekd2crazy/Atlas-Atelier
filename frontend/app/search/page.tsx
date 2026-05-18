@@ -9,6 +9,7 @@ import {
   PackageSearch,
   Sparkles,
   Loader2,
+  DatabaseZap,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,15 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import FileDropZone from "../components/FileDrop";
 
 import {
@@ -142,10 +152,52 @@ export default function SearchPage() {
 
   const clearAll = () => setFiles([]);
 
-  // Requete dans le Backend : 
+  // Requete dans le Backend :
   const [results, setResults] = useState<ResultMeta[]>([]);
   const [errorSearch, setErrorSearch] = useState<string | null>(null);
   const [loadingSearch, setLoadingSearch] = useState<boolean>(false);
+
+  /**
+   * Ingestion / (ré)indexation des composants dans la base vectorielle (Chroma).
+   *
+   * Quand faut-il lancer l'ingestion ?
+   *  - Après un import Excel (ou tout ajout en masse) de composants.
+   *  - Après avoir ajouté/modifié des composants dont le champ `photo_url` a changé.
+   *  - Lorsque la recherche par image ne retourne aucun résultat alors qu'un
+   *    composant correspondant existe bien en stock (indice : index désynchronisé).
+   *  - À la toute première mise en service de l'environnement, si l'index Chroma
+   *    est vide.
+   *
+   * À NE PAS lancer :
+   *  - Après une simple modif de quantité/emplacement (ces champs ne sont pas
+   *    embeddés — relancer ne sert à rien).
+   *  - En production pendant un pic d'utilisation : l'opération télécharge et
+   *    embed toutes les images des nouveaux composants, c'est long et bloquant.
+   *
+   * Le bouton ouvre un dialog de confirmation avant tout déclenchement.
+   */
+  const [openIngest, setOpenIngest] = useState<boolean>(false);
+  const [loadingIngest, setLoadingIngest] = useState<boolean>(false);
+
+  const handleIngestion = async () => {
+    try {
+      setLoadingIngest(true);
+      const res = await fetch("/api/ingestion", { method: "POST" });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`API ${res.status}: ${txt}`);
+      }
+
+      toast.success("Ingestion terminée — index vectoriel à jour");
+      setOpenIngest(false);
+    } catch (err: any) {
+      console.error("Erreur ingestion :", err);
+      toast.error(err?.message ?? "Impossible de lancer l'ingestion");
+    } finally {
+      setLoadingIngest(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (files.length === 0) return;
@@ -334,14 +386,27 @@ export default function SearchPage() {
 
             <Card className="border-slate-200/70 shadow-lg shadow-slate-200/50">
                 <CardHeader className="pb-6">
-                    <CardTitle className="text-2xl flex items-center gap-3">
-                        <UploadCloud className="h-8 w-8 text-indigo-600" />
-                        Zone de dépôt
-                    </CardTitle>
-                    <CardDescription className="text-lg">
-                        Glisse-dépose tes fichiers ou clique pour parcourir
-                    </CardDescription>
-                </CardHeader> 
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <CardTitle className="text-2xl flex items-center gap-3">
+                                <UploadCloud className="h-8 w-8 text-indigo-600" />
+                                Zone de dépôt
+                            </CardTitle>
+                            <CardDescription className="text-lg">
+                                Glisse-dépose tes fichiers ou clique pour parcourir
+                            </CardDescription>
+                        </div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setOpenIngest(true)}
+                            disabled={loadingIngest}
+                            className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                        >
+                            <DatabaseZap className="h-4 w-4" />
+                            Lancer l'ingestion
+                        </Button>
+                    </div>
+                </CardHeader>
 
                 <CardContent className="space-y-6">
                    {/* ZONE CENTRALE DRAG & DROP */}
@@ -540,9 +605,61 @@ export default function SearchPage() {
                 </CardContent>                      
             </Card>
 
-            
+
             </div>
         </div>
+
+        {/* Dialog de confirmation avant le lancement de l'ingestion */}
+        <Dialog open={openIngest} onOpenChange={(o) => !loadingIngest && setOpenIngest(o)}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <DatabaseZap className="h-5 w-5 text-indigo-600" />
+                        Lancer l'ingestion ?
+                    </DialogTitle>
+                    <DialogDescription className="space-y-2 pt-2">
+                        <span className="block">
+                            Cette opération réindexe tous les composants ayant une
+                            <span className="font-medium"> photo_url</span> dans la base
+                            vectorielle (Chroma) utilisée par la recherche par image.
+                        </span>
+                        <span className="block text-amber-700">
+                            ⚠ Le processus télécharge et embed chaque image — cela peut
+                            prendre plusieurs minutes et bloque le backend pendant ce temps.
+                        </span>
+                        <span className="block">
+                            Confirme-tu le lancement ?
+                        </span>
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                        variant="outline"
+                        onClick={() => setOpenIngest(false)}
+                        disabled={loadingIngest}
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        onClick={handleIngestion}
+                        disabled={loadingIngest}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                    >
+                        {loadingIngest ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Ingestion en cours...
+                            </>
+                        ) : (
+                            <>
+                                <DatabaseZap className="mr-2 h-4 w-4" />
+                                Confirmer et lancer
+                            </>
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }
