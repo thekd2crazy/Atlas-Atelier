@@ -29,9 +29,8 @@ import { Button } from "@/components/ui/button";
 import {
   CalendarDays,
   Euro,
-  Archive,
-  FolderOpen,
   Activity,
+  Search,
 } from "lucide-react";
 import { Projet } from "@/types/type-projet";
 import { useEffect, useState, useMemo } from "react";
@@ -39,8 +38,10 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Composant } from "@/types/type-composant";
-import { CreateBOMInput, DeleteBOMInput } from "@/types/types-bom";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { CreateBOMInput, DeleteBOMInput, UpdateBOMInput } from "@/types/types-bom";
+import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { se } from "date-fns/locale";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("fr-BE", {
@@ -80,6 +81,7 @@ export default function ProjetDetailPage ({ params }: Props) {
     const [projet, setProjet] = useState<Projet | null>(null);
     const [loadingProjet, setLoadingProjet] = useState<boolean>(true);
     const [projError, setProjError] = useState<string | null>(null);
+    const [Searchedcomposants, setSearchedcomposants] = useState<Composant[]>([]);
     const [form, setForm] = useState<FormValues>({
         composant_id: 0,
         qte_requise: 1,
@@ -89,7 +91,14 @@ export default function ProjetDetailPage ({ params }: Props) {
     const [composants, setComposants] = useState<Composant[]>([]);
     const [lineBOM, setLineBOM] = useState<CreateBOMInput[]>([]);
     const router = useRouter();
+// update projet
+    const [formUpdate, setFormUpdate] = useState<UpdateBOMInput>();  
+    const [open, setOpen] = useState(false);
+    const [CurrentComponent, setCurrentComponent] = useState<CreateBOMInput | null>(null);
+    const [qteRequise, setQteRequise] = useState("");
 
+// Activer la modal d'ajout de ligne BOM 
+    const [openAdd, setOpenAdd] = useState(false);
     const handleRefresh = () => {
         router.refresh();
     };
@@ -198,46 +207,46 @@ export default function ProjetDetailPage ({ params }: Props) {
         id_composant: number,
         qte_requise: number
         ): Promise<any> {
-    try {
-        if (!id_projet || !id_composant) {
-        throw new Error("IDs manquants");
-        }
-
-        if (qte_requise <= 0) {
-        throw new Error("La quantité doit être > 0");
-        }
-
-        const response = await fetch(
-        `/api/projets/${id_projet}/bom/${id_composant}`,
-        {
-            method: "PATCH",
-            headers: {
-            "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-            qte_requise,
-            }),
-        }
-        );
-
-        const text = await response.text();
-
-        let data;
         try {
-        data = JSON.parse(text);
-        } catch {
-        data = text;
-        }
+            if (!id_projet || !id_composant) {
+            throw new Error("IDs manquants");
+            }
 
-        if (!response.ok) {
-        throw new Error(data?.detail || "Erreur update BOM");
-        }
+            if (qte_requise <= 0) {
+            throw new Error("La quantité doit être > 0");
+            }
 
-        return data;
-    } catch (error) {
-        console.error("updateProjetBOM error:", error);
-        throw error;
-    }
+            const response = await fetch(
+            `/api/projets/${id_projet}/bom/${id_composant}`,
+            {
+                method: "PATCH",
+                headers: {
+                "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                qte_requise,
+                }),
+            }
+            );
+
+            const text = await response.text();
+
+            let data;
+            try {
+            data = JSON.parse(text);
+            } catch {
+            data = text;
+            }
+
+            if (!response.ok) {
+            throw new Error(data?.detail || "Erreur update BOM");
+            }
+
+            return data;
+        } catch (error) {
+            console.error("updateProjetBOM error:", error);
+            throw error;
+        }
     }
 
     useEffect(() => {
@@ -252,11 +261,11 @@ export default function ProjetDetailPage ({ params }: Props) {
     const filtered = useMemo(() => {
         if (!query) return composants;
 
-        return composants.filter((c) =>
+        return setSearchedcomposants(composants.filter((c) =>
         `${c.nom} ${c.reference}`
             .toLowerCase()
             .includes(query.toLowerCase())
-        );
+        ));
     }, [query, composants]);
 
    
@@ -340,6 +349,38 @@ export default function ProjetDetailPage ({ params }: Props) {
         return <p>Projet introuvable.</p>;
     }
 
+
+
+    const handleSubmit = async (C : UpdateBOMInput ) => {
+        const qty = Number(C.qte_requise);
+        const id_composant = C.composant_id;
+        if (!idProjet || !id_composant) {
+            setError("IDs manquants");
+            return;
+        }
+
+        if (!Number.isFinite(qty) || qty <= 0) {
+            setError("La quantité doit être > 0");
+            return;
+        }
+
+        try {
+        setLoading(true);
+        setError("");
+
+        const response = await updateProjetBOM(idProjet, id_composant, qty);
+
+        setOpen(false);
+        } catch (e: any) {
+        setError(e?.message || "Erreur update BOM");
+        } finally {
+        setLoading(false);
+        }
+    };
+
+
+
+    // Logique metier :      
     const ratio = projet.budget_alloue > 0
     ? projet.budget_consomme / projet.budget_alloue
     : 0;
@@ -447,8 +488,15 @@ export default function ProjetDetailPage ({ params }: Props) {
 
                     {/* BILL OF MATERIAL (BOM) TABLE */}
                     <div className="rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="sticky top-0 z-10 bg-slate-50/90 px-4 py-3 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                        <div className="sticky top-0 z-10 bg-slate-50/90 px-4 py-3 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200 flex items-center justify-between">
                             Bill of Material
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => setOpenAdd(true)}
+                            >
+                                <FaPlus size={12} />
+                            </Button>
                         </div>
 
                         {composants.length > 0 ? (
@@ -456,6 +504,7 @@ export default function ProjetDetailPage ({ params }: Props) {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[30%]">ID du Composant</TableHead>
+                                        <TableHead className="w-[55%]">Nom du Composant</TableHead>
                                         <TableHead className="w-[15%] text-right">Quantité</TableHead>
                                         <TableHead className="w-[15%] text-right">Actions</TableHead>
                                     </TableRow>
@@ -467,6 +516,7 @@ export default function ProjetDetailPage ({ params }: Props) {
                                             className="group/item transition hover:bg-slate-50/50 dark:hover:bg-slate-900/50"
                                         >
                                             <TableCell className="font-medium">{c.composant_id}</TableCell>
+                                            <TableCell>{composants.find((comp) => comp.id_composant === c.composant_id)?.nom || "Composant inconnu"}</TableCell>
                                             <TableCell className="text-right tabular-nums items-center-safe">
                                             {typeof c.qte_requise === "number" ? c.qte_requise : `${c.qte_requise}`}
                                             </TableCell>
@@ -475,7 +525,7 @@ export default function ProjetDetailPage ({ params }: Props) {
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        
+                                                        onClick={() => {setFormUpdate({composant_id: c.composant_id, qte_requise: c.qte_requise}), setOpen(true)}}
                                                     >
                                                         <FaEdit size={12} />
                                                     </Button>
@@ -495,7 +545,7 @@ export default function ProjetDetailPage ({ params }: Props) {
                             </Table>
                             ) : (
                                 <div className="flex h-20 items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                                Aucun composant dans ce projet.
+                                     Aucun composant dans ce projet.
                                 </div>
                             )}
                     </div>
@@ -506,93 +556,176 @@ export default function ProjetDetailPage ({ params }: Props) {
 
             <Separator/>
             
-           <form onSubmit={onSubmit}>
-                <Card className="w-full max-w-md mx-auto shadow-sm border-slate-200 dark:border-slate-800">
-                <CardHeader className="pb-5">
-                    <CardTitle className="text-lg font-semibold">Ajouter une ligne BOM</CardTitle>
-                    <CardDescription className="text-sm text-slate-600 dark:text-slate-400">
-                    Associer un composant du stock à ce projet avec une quantité.
-                    </CardDescription>
-                </CardHeader>
+           <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+                <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border-slate-200 dark:border-slate-800">
+                    <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+                    <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200/70 dark:border-slate-800">
+                        <DialogTitle className="text-xl font-semibold tracking-tight">
+                        Ajouter une ligne BOM
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-slate-600 dark:text-slate-400">
+                        Associer un composant du stock à ce projet avec une quantité.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <CardContent className="space-y-6">
-                    {/* COMPOSANT */}
-                    <div className="space-y-2">
-                    <label
-                        htmlFor="composant-select"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                        Composant
-                    </label>
-                    <Select
-                        value={String(form.composant_id)}
-                        onValueChange={(val) =>
-                        updateField("composant_id", Number(val))
-                        }
-                    >
-                        <SelectTrigger id="composant-select" className="w-full">
-                        <SelectValue placeholder="Choisir un composant" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {composants.map((c: Composant) => (
-                                <SelectItem
-                                key={c.id_composant}
-                                value={String(c.id_composant)}
+                    <form onSubmit={onSubmit}>
+                        <Card className="border-0 shadow-none bg-transparent">
+                        <CardContent className="px-6 py-6 space-y-6">
+                            <div className="space-y-2">
+                            <label
+                                htmlFor="composant-select"
+                                className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                            >
+                                Composant
+                            </label>
+                            
+                            <Select
+                                value={String(form.composant_id || "")}
+                                onValueChange={(val) =>
+                                updateField("composant_id", Number(val))
+                                }
+                            >
+
+                                <SelectTrigger
+                                id="composant-select"
+                                className="w-full h-11 rounded-xl"
                                 >
-                                {c.nom} <span className="text-slate-500">({c.reference})</span>
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    </div>
+                                
+                                <SelectValue placeholder="Choisir un composant" />
+                                </SelectTrigger>
+                               
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                                        <Input
+                                            placeholder="Rechercher par nom, référence, ..."
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                
+                                <SelectContent>
+                                    
+                                    {Searchedcomposants.map((c) => (
+                                        <SelectItem
+                                        key={c.id_composant}
+                                        value={String(c.id_composant)}
+                                        >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span>{c.nom}</span>
+                                            <span className="text-slate-500 text-xs">
+                                            ({c.reference})
+                                            </span>
+                                        </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            </div>
 
-                    {/* QUANTITÉ */}
-                    <div className="space-y-2">
-                    <label
-                        htmlFor="qte"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                        Quantité
-                    </label>
-                    <Input
-                        id="qte"
-                        type="number"
-                        min={1}
-                        value={form.qte_requise}
-                        onChange={(e) =>
-                        updateField("qte_requise", Number(e.target.value))
-                        }
-                        placeholder="1"
-                        className="w-full"
-                    />
-                    </div>
+                            <div className="space-y-2">
+                            <label
+                                htmlFor="qte"
+                                className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                            >
+                                Quantité
+                            </label>
+                            <Input
+                                id="qte"
+                                type="number"
+                                min={1}
+                                inputMode="numeric"
+                                value={form.qte_requise}
+                                onChange={(e) =>
+                                updateField("qte_requise", Number(e.target.value))
+                                }
+                                placeholder="1"
+                                className="h-11 rounded-xl"
+                            />
+                            </div>
 
-                    {/* ERREUR GLOBAL */}
-                    {error && (
-                    <p className="text-sm text-destructive mt-1">
-                        {error}
-                    </p>
+                            {error && (
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                                {error}
+                            </div>
+                            )}
+
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setOpenAdd(false)}
+                                className="rounded-xl"
+                                disabled={loading}
+                            >
+                                Annuler
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="rounded-xl"
+                                disabled={loading}
+                            >
+                                {loading ? "Ajout en cours..." : "Ajouter au projet"}
+                            </Button>
+                            </div>
+                        </CardContent>
+                        </Card>
+                    </form>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal d'édition de la quantité dans le BOM (à implémenter) */}
+
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline">Modifier la quantité</Button>
+                </DialogTrigger>
+
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Mettre à jour le BOM</DialogTitle>
+                        <DialogDescription>
+                            Modifie la quantité requise pour ce composant.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {formUpdate && (
+                        <div className="grid gap-3 py-4">
+                        <label className="text-sm font-medium">Quantité requise</label>
+                        <span className="text-xs text-slate-500">
+                           #{formUpdate.composant_id} Composant: {composants.find((comp) => comp.id_composant === formUpdate.composant_id)?.nom || "Inconnu"}
+                        </span>
+                        <Input
+                            id="qte_requise"
+                            type="number"
+                            min={1}
+                            value={ formUpdate?.qte_requise !== undefined
+                                    ? String(formUpdate.qte_requise)
+                                    : qteRequise
+                            }
+                            onChange={(e) => setFormUpdate({ ...formUpdate, qte_requise: Number(e.target.value) })}
+                            placeholder="Ex: 10"
+                        />
+
+                        {error && <p className="text-sm text-red-600">{error}</p>}
+                        </div>
                     )}
 
-                    {/* BOUTON AVEC ÉTAT CHARGEMENT */}
-                    <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full"
-                    variant="default"
-                    onClick={onSubmit}
-                    >
-                    {loading ? (
-                        <>
-                        <span className="animate-pulse">Ajout en cours...</span>
-                        </>
-                    ) : (
-                        "Ajouter au projet"
-                    )}
-                    </Button>
-                    </CardContent>
-                </Card>
-            </form>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setOpen(false)}
+                            disabled={loading}
+                        >
+                            Annuler
+                        </Button>
+                        <Button type="button" onClick={() => handleSubmit(formUpdate!)} disabled={loading}>
+                            {loading ? "Enregistrement..." : "Enregistrer"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
         
     );
