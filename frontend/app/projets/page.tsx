@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect} from "react"
+import { useState, useEffect} from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -44,10 +44,12 @@ import {
   FileText,
   CalendarPlus2,
 } from "lucide-react"
-import { NewProjet, Projet } from "@/types/type-projet";
+import { NewProjet, Projet, ProjetUpdate } from "@/types/type-projet";
 import { Separator } from "@/components/ui/separator";
-import { AddProjet, archiverProjet } from "@/lib/projet";
+import { AddProjet, archiverProjet, updateProjet } from "@/lib/projet";
 import { useRouter } from "next/navigation";
+import Fa from "zod/v4/locales/fa.cjs";
+import { FaEdit } from "react-icons/fa";
 
 
 
@@ -229,6 +231,63 @@ export default function ProjetsDashboard() {
             setLoading(false);
         }
     };
+
+  // update projet :
+    const [openEdit, setOpenEdit] = useState(false);
+    const [loadingEdit, setLoadingEdit] = useState(false);
+    const [projet, setProjet] = useState<Projet | null>(null);
+
+    const [formEdit, setFormEdit] = useState<ProjetUpdate>({
+        nom: projet?.nom || "",
+        budget_alloue: projet?.budget_alloue || 0,
+        description: projet?.description ?? undefined,
+        statut: projet?.statut || "actif",
+        date: projet?.date || new Date().toISOString().split("T")[0],
+    });
+
+    const handleChangeEdit = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormEdit({
+            ...formEdit,
+            [name]: name === "budget_alloue" ? Number(value) : value,
+        });
+    };
+
+    React.useEffect(() => {
+      if (projet) {
+        setFormEdit({
+          nom: projet.nom,
+          budget_alloue: projet.budget_alloue,
+          description: projet.description ?? undefined,
+          statut: projet.statut,
+          date: projet.date,
+        });
+      }
+    }, [projet]);
+
+    const handleSubmitEdit = async () => {
+      if (!projet) {
+        toast.error("Aucun projet sélectionné pour la modification");
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await updateProjet(projet.id_projet, {
+          ...formEdit,
+          budget_alloue: Number(formEdit.budget_alloue),
+        });
+
+        setOpenEdit(false);
+      } catch (err) {
+        console.error(err);
+        toast.error("Impossible de mettre à jour le projet");
+      } finally {
+        setLoading(false);
+      }
+    };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* En-tête */}
@@ -393,13 +452,23 @@ export default function ProjetsDashboard() {
                     <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
                       {projet.nom}
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 mt-1 space-y-1">
+                   <CardDescription className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+
+                      {/* LEFT: info */}
                       <div className="flex items-center gap-1.5">
                         <CalendarPlus2 className="h-3.5 w-3.5" />
                         <span>{new Date(projet.date).toLocaleDateString("fr-FR")}</span>
                       </div>
-                      
-                    </CardDescription>
+
+                      {/* RIGHT: action */}
+                      <button className="inline-flex items-center justify-center p-1 rounded-md text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 transition" onClick={() => {
+                        setProjet(projet)
+                        setOpenEdit(true)
+                      }}>
+                        <FaEdit className="h-3.5 w-3.5" />
+                      </button>
+
+                  </CardDescription>
                   </div>
                   <Badge 
                     variant="outline" 
@@ -486,7 +555,7 @@ export default function ProjetsDashboard() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-2xl rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-8 text-white relative overflow-hidden">
+          <div className="bg-linear-to-br from-indigo-600 via-violet-600 to-purple-700 p-8 text-white relative overflow-hidden">
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,white,transparent_40%)]" />
 
               <DialogHeader className="relative z-10 space-y-3">
@@ -504,7 +573,7 @@ export default function ProjetsDashboard() {
                 </DialogDescription>
               </DialogHeader>
           </div> 
-          <div className="p-8 bg-gradient-to-b from-white to-slate-50">
+          <div className="p-8 bg-linear-to-b from-white to-slate-50">
             <div className="grid gap-6">
               <Card className="rounded-2xl border-slate-200/70 shadow-sm p-5 bg-white/80 backdrop-blur-sm">
                 
@@ -625,7 +694,106 @@ export default function ProjetsDashboard() {
         </form>           
         </DialogContent>
       </Dialog>
-        
+
+      <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+      <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-950">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              Modifier le projet
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-600 dark:text-slate-400">
+              Mets à jour les informations du projet.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmitEdit();
+            }}
+            className="px-6 py-6 space-y-5"
+          >
+            <div className="space-y-2">
+              <label htmlFor="nom" className="text-sm font-medium">
+                Nom
+              </label>
+              <Input
+                id="nom"
+                name="nom"
+                value={formEdit.nom}
+                onChange={handleChangeEdit}
+                placeholder="Nom du projet"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="budget_alloue" className="text-sm font-medium">
+                Budget
+              </label>
+              <Input
+                id="budget_alloue"
+                name="budget_alloue"
+                type="number"
+                value={formEdit.budget_alloue}
+                onChange={handleChangeEdit}
+                placeholder="Budget"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formEdit.description}
+                onChange={handleChangeEdit}
+                placeholder="Description"
+                className="min-h-28 rounded-xl resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="statut" className="text-sm font-medium">
+                Statut
+              </label>
+              <Input
+                id="statut"
+                name="statut"
+                value={formEdit.statut}
+                onChange={handleChangeEdit}
+                placeholder="Statut"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenEdit(false)}
+                className="rounded-xl"
+              >
+                Annuler
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+              >
+                {loading ? "Sauvegarde..." : "Enregistrer"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  
     </div>
     );
 }
