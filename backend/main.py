@@ -260,7 +260,6 @@ def update_projet(id_projet: int, projet_update: schemas.ProjetUpdate, db: Sessi
     if projet is None:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
-    projet_modif_validation(projet)
     
     # On met à jour les champs
     projet.nom = projet_update.nom
