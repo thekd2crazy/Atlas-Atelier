@@ -33,44 +33,52 @@ export async function GET(
 }
 
 
+
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id_projet = params.id;
-    const projet_update: ProjetUpdate = await request.json(); 
+    const id_projet = Number(params.id);
+
+    if (isNaN(id_projet)) {
+      return NextResponse.json(
+        { error: "ID de projet invalide" },
+        { status: 400 }
+      );
+    }
+
+    const projet_update = await request.json();
 
     const response = await fetch(
       `${process.env.API_BASE_URL}/projets/${id_projet}`,
       {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(projet_update), // Champs optionnels préservés
+        body: JSON.stringify(projet_update),
       }
     );
 
+    const data = await response.json().catch(() => null);
+
     if (!response.ok) {
-      if (response.status === 404) {
-        return NextResponse.json(
-          { error: 'Projet non trouvé' },
-          { status: 404 }
-        );
-      }
       return NextResponse.json(
-        { error: 'Impossible de mettre à jour le projet' },
+        {
+          error: data?.detail || "Erreur lors de la mise à jour du projet",
+        },
         { status: response.status }
       );
     }
 
-    const projet: Projet = await response.json();
-    return NextResponse.json(projet, { status: 200 });
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Erreur mise à jour projet:', error);
+    console.error("Erreur mise à jour projet:", error);
+
     return NextResponse.json(
-      { error: 'Erreur serveur' },
+      { error: "Erreur serveur interne" },
       { status: 500 }
     );
   }
