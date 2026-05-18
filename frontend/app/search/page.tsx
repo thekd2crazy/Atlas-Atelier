@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
   Search,
@@ -233,14 +233,14 @@ export default function SearchPage() {
   };
 
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<Composant[]>([]);
+    const [resultstext, setResultstext] = useState<Composant[]>([]);
     const [loading, setLoading] = useState(false);
 
     // 🔥 debounce
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!query.trim()) {
-                setResults([]);
+                setResultstext([]);
                 return;
             }
 
@@ -255,7 +255,7 @@ export default function SearchPage() {
             setLoading(true);
 
             const data = await rechercheTexte(value);
-            setResults(data);
+            setResultstext(data);
         } catch (err) {
             console.error(err);
         } finally {
@@ -289,7 +289,7 @@ export default function SearchPage() {
 
                 {!loading && (
                     <div className="space-y-2">
-                    {results.map((item) => (
+                    {resultstext.map((item) => (
                         <div
                         key={item.id_composant}
                         className="flex items-center justify-between rounded-md border bg-background p-3 transition-colors hover:bg-muted/50"
