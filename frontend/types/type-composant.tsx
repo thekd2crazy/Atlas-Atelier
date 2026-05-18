@@ -34,3 +34,14 @@ export type ComposantUpdate = {
     prix : number | string 
     photo_url : string 
 };
+
+// Utiliser pour 
+
+export type ComposantRechercheItem = {
+    id_composant: number;
+    nom: string;
+    reference: string;
+    categorie: string;
+    description?: string;
+    emplacement?: string;
+};

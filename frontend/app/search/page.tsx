@@ -180,155 +180,88 @@ export default function SearchPage() {
     }
   };
 
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<Composant[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // 🔥 debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!query.trim()) {
+                setResults([]);
+                return;
+            }
+
+            handleSearch(query);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [query]);
+
+    const handleSearchText = async (value: string) => {
+        try {
+            setLoading(true);
+
+            const data = await rechercheTexte(value);
+            setResults(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
   return (
     <>
         <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 p-4 md:p-8">
             <div className="mx-auto max-w-7xl space-y-6">
-                <Card className="border-slate-200/70 shadow-lg shadow-slate-200/50">
-                    <CardHeader className="space-y-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <Sparkles className="h-4 w-4 text-indigo-500" />
-                            <span>Recherche textuelle intelligente</span>
+              <Card className="w-full max-w-xl border-muted/60 shadow-sm">
+                <CardContent className="space-y-4 p-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Rechercher un composant..."
+                    className="pl-9"
+                    />
+                </div>
+
+                {loading && (
+                    <div className="space-y-2">
+                    <Skeleton className="h-14 w-full rounded-md" />
+                    <Skeleton className="h-14 w-full rounded-md" />
+                    <Skeleton className="h-14 w-full rounded-md" />
+                    </div>
+                )}
+
+                {!loading && (
+                    <div className="space-y-2">
+                    {results.map((item) => (
+                        <div
+                        key={item.id_composant}
+                        className="flex items-center justify-between rounded-md border bg-background p-3 transition-colors hover:bg-muted/50"
+                        >
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{item.nom}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                            {item.reference}
+                            </p>
                         </div>
 
-                        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                        <div>
-                            <CardTitle className="text-2xl md:text-3xl">
-                            Rechercher un composant
-                            </CardTitle>
-                            <CardDescription className="mt-1 max-w-2xl">
-                            Tape un nom, une référence, un emplacement ou un mot-clé pour retrouver rapidement un élément.
-                            </CardDescription>
+                        <Badge variant="secondary" className="ml-3 shrink-0">
+                            {item.categorie}
+                        </Badge>
                         </div>
+                    ))}
+                    </div>
+                )}
 
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <PackageSearch className="h-4 w-4" />
-                            <span>{filtered.length} résultat(s)</span>
-                        </div>
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-5">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Rechercher : résistance, STM32, A1-03..."
-                                className="h-12 rounded-2xl border-slate-200 bg-white pl-11 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-indigo-500"
-                            />
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <SlidersHorizontal className="h-4 w-4 text-slate-500" />
-                            {categories.map((cat) => (
-                                <Button
-                                key={cat}
-                                variant={category === cat ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setCategory(cat)}
-                                className="rounded-full"
-                                >
-                                {cat === "all" ? "Toutes catégories" : cat}
-                                </Button>
-                            ))}
-                        </div>
-
-                        <Separator />
-
-                        <Tabs defaultValue="cards" className="space-y-4">
-                            <TabsList className="grid w-fit grid-cols-2 rounded-full bg-slate-100 p-1">
-                                <TabsTrigger value="cards" className="rounded-full px-4">
-                                Cartes
-                                </TabsTrigger>
-                                <TabsTrigger value="detail" className="rounded-full px-4">
-                                Détails
-                                </TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="cards" className="mt-0">
-                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                {filtered.map((item) => (
-                                    <Card
-                                    key={item.id}
-                                    className="group border-slate-200/70 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/60"
-                                    >
-                                    <CardHeader className="space-y-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <CardTitle className="text-lg">{item.nom}</CardTitle>
-                                            <CardDescription>{item.reference}</CardDescription>
-                                        </div>
-                                        <Badge variant="secondary" className="rounded-full">
-                                            {item.categorie}
-                                        </Badge>
-                                        </div>
-                                    </CardHeader>
-
-                                    <CardContent className="space-y-3">
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                        <div className="rounded-xl bg-slate-50 p-3">
-                                            <p className="text-slate-500">Emplacement</p>
-                                            <p className="font-medium">{item.emplacement}</p>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-50 p-3">
-                                            <p className="text-slate-500">Quantité</p>
-                                            <p className="font-medium">{item.quantite}</p>
-                                        </div>
-                                        </div>
-
-                                        <p className="text-sm leading-6 text-slate-600">
-                                        {item.description}
-                                        </p>
-                                    </CardContent>
-                                    </Card>
-                                ))}
-                                </div>
-
-                                {filtered.length === 0 && (
-                                <Card className="border-dashed">
-                                    <CardContent className="flex flex-col items-center justify-center py-14 text-center">
-                                    <Layers3 className="mb-3 h-10 w-10 text-slate-400" />
-                                    <p className="text-base font-medium">Aucun résultat trouvé</p>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        Essaie un autre mot-clé ou enlève un filtre.
-                                    </p>
-                                    </CardContent>
-                                </Card>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="detail" className="mt-0">
-                                <Card className="overflow-hidden">
-                                <CardContent className="p-0">
-                                    <div className="divide-y">
-                                    {filtered.map((item) => (
-                                        <div
-                                        key={item.id}
-                                        className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-slate-50"
-                                        >
-                                        <div>
-                                            <p className="font-medium">{item.nom}</p>
-                                            <p className="text-sm text-slate-500">
-                                            {item.reference} • {item.emplacement}
-                                            </p>
-                                        </div>
-                                        <Badge variant="outline">{item.quantite} pcs</Badge>
-                                        </div>
-                                    ))}
-                                    </div>
-                                </CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
-
-                        
-
-
-                    </CardContent>
-                    
-
-            </Card>
+                {query && !loading && results.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Aucun résultat trouvé.</p>
+                )}
+                </CardContent>
+            </Card>  
 
             <Separator/>
 

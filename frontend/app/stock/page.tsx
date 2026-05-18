@@ -134,6 +134,9 @@ export default function StockPage () {
             return console.log("Creation impossible !")
         }
     };
+    
+
+    const refresh = () => router.refresh();
 
     //Page pour modifier les compsants : 
     const [editOpen, setEditOpen] = useState<boolean>(false);
@@ -263,7 +266,7 @@ export default function StockPage () {
 
                                             return (
                                                 <TableRow
-                                                    onClick={() => {setEditOpen(true), setCurrentComposant(c)} }
+                                                    onClick={() => router.push(`/stock/${c.id_composant}`)} 
                                                     key={c.id_composant|| crypto.randomUUID()}
                                                     className="cursor-pointer hover:bg-gray-50 transition-colors"
                                                     >
