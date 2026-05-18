@@ -100,7 +100,7 @@ def create_composant(composant: schemas.ComposantCreate, db: Session = Depends(g
                 print(f"Chroma skip: aucune image valide pour le composant {nouveau_composant.id_composant}")
             else:
                       image_emb = sum(image_embs) / len(image_embs)
-                      desc = f"{nouveau_composant.nom} {nouveau_composant.categorie}"
+                      desc = f"{nouveau_composant.nom} {nouveau_composant.categorie}{nouveau_composant.description}"
       
                       emb = (image_emb + embed_text(desc)) / 2
                       collection.add(
@@ -187,7 +187,7 @@ def update_composant(id_composant: int, composant_update: schemas.ComposantCreat
                 print(f"Chroma skip: aucune image valide pour le composant {id_composant}")
             else:
                 image_emb = sum(image_embs) / len(image_embs)
-                desc = f"{composant.nom} {composant.categorie}"
+                desc = f"{composant.nom} {composant.categorie}{composant.description}"
 
                 emb = (image_emb + embed_text(desc)) / 2
                 collection.update(
@@ -501,7 +501,7 @@ def ingest():
             continue
 
         image_emb = sum(image_embs) / len(image_embs)
-        desc = f"{item.nom} {item.categorie}"
+        desc = f"{item.nom}{item.categorie}{item.description}"
 
         emb = (image_emb + embed_text(desc)) / 2
 
