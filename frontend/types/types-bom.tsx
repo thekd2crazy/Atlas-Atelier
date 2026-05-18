@@ -23,3 +23,9 @@ export type CreateBOMInput = {
 export type DeleteBOMInput = {
   composant_id: number;
 };
+
+// Update ligne de la BOM d'un projet
+export type UpdateBOMInput = {
+  composant_id: number;
+  qte_requise: number;
+};
