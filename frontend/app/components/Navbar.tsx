@@ -40,10 +40,6 @@ export default function Navbar() {
                          <FaBoxes className="mx-auto" size={21}/>
                          <span>Stock</span>
                         </Link>
-                        <Link href="/dashboard" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
-                         <BarChart3 className="mx-auto" size={21}/>
-                         <span>Dashboard</span>
-                        </Link>
                         <Link href="/projets" className=" relative group rounded hover:text-green-200 hover:bg-black flex flex-col px-4 py-2 space-x-4 items-center ">
                          <BarChart3 className="mx-auto" size={21}/>
                          <span>Project</span>
@@ -68,14 +64,21 @@ export default function Navbar() {
                         className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
-                       <FaHome size={19} className="space-x-3 "/> Home 
+                       
+                       <div className="flex items-center gap-3">
+                            <FaHome size={19} className="space-x-3 "/>
+                            <span>Home </span>
+                        </div>
                     </Link>
                     <Link
                         href="/search"
                         className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
-                        <FaSearch size={19 }/> Search
+                        <div className="flex items-center gap-3">
+                            <FaSearch size={19}/>
+                            <span>Search</span>
+                        </div>
                     </Link>
 
                     <Link
@@ -83,15 +86,23 @@ export default function Navbar() {
                         className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
-                        <FaBoxes size={19}/> Stock 
+                          
+                        <div className="flex items-center gap-3">
+                            <FaBoxes size={19}/>
+                            <span>Stock</span>
+                        </div>
                     </Link>
 
                     <Link
-                        href="/dashboard"
+                        href="/projets"
                         className="relative px-4 py-2 hover:bg-green-200 text-black space-x-3 flex"
                         onClick={() => setOpen(false)}
                     >
-                        <BarChart3 size={19}/> Dashboard 
+                        <div className="flex items-center gap-3">
+                            <BarChart3 size={19}/>
+                            <span>Project</span>
+                        </div>
+                        
                     </Link>
 
                 </div>
