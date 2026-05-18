@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
   Search,
@@ -38,8 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import FileDropZone from "../components/FileDrop";
+import { rechercheTexte } from "@/lib/search";
+import { ComposantRechercheItem } from "@/types/type-composant";
 
 import {
   UploadCloud,
@@ -49,7 +51,6 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { RenderResultMetadata } from "next/dist/server/render-result";
 
 type Item = {
   id: number;
@@ -153,7 +154,7 @@ export default function SearchPage() {
   const clearAll = () => setFiles([]);
 
   // Requete dans le Backend :
-  const [results, setResults] = useState<ResultMeta[]>([]);
+    const [imageResults, setImageResults] = useState<ResultMeta[]>([]);
   const [errorSearch, setErrorSearch] = useState<string | null>(null);
   const [loadingSearch, setLoadingSearch] = useState<boolean>(false);
 
@@ -199,14 +200,14 @@ export default function SearchPage() {
     }
   };
 
-  const handleSearch = async () => {
+    const handleImageSearch = async () => {
     if (files.length === 0) return;
     const file = files[0];
 
     try {
       setLoadingSearch(true);
       setErrorSearch(null);
-      setResults([]);
+    setImageResults([]);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -223,7 +224,7 @@ export default function SearchPage() {
 
       const data = await res.json();
       // FastAPI renvoie results["metadatas"] → liste de dicts
-      setResults(data as ResultMeta[]);
+            setImageResults(data as ResultMeta[]);
     } catch (err: any) {
       console.error("Erreur recherche image:", err);
       setErrorSearch(err.message ?? "Erreur lors de la recherche");
@@ -232,36 +233,36 @@ export default function SearchPage() {
     }
   };
 
-    const [query, setQuery] = useState("");
-    const [results, setResults] = useState<Composant[]>([]);
-    const [loading, setLoading] = useState(false);
+        const [query, setQuery] = useState("");
+        const [textResults, setTextResults] = useState<ComposantRechercheItem[]>([]);
+        const [loadingText, setLoadingText] = useState(false);
+
+    const handleSearchText = useCallback(async (value: string) => {
+        try {
+            setLoadingText(true);
+
+            const data = await rechercheTexte(value);
+            setTextResults(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingText(false);
+        }
+    }, []);
 
     // 🔥 debounce
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!query.trim()) {
-                setResults([]);
+                setTextResults([]);
                 return;
             }
 
-            handleSearch(query);
+            handleSearchText(query);
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [query]);
-
-    const handleSearchText = async (value: string) => {
-        try {
-            setLoading(true);
-
-            const data = await rechercheTexte(value);
-            setResults(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [query, handleSearchText]);
 
   return (
     <>
@@ -279,7 +280,7 @@ export default function SearchPage() {
                     />
                 </div>
 
-                {loading && (
+                {loadingText && (
                     <div className="space-y-2">
                     <Skeleton className="h-14 w-full rounded-md" />
                     <Skeleton className="h-14 w-full rounded-md" />
@@ -287,9 +288,9 @@ export default function SearchPage() {
                     </div>
                 )}
 
-                {!loading && (
+                {!loadingText && (
                     <div className="space-y-2">
-                    {results.map((item) => (
+                    {textResults.map((item) => (
                         <div
                         key={item.id_composant}
                         className="flex items-center justify-between rounded-md border bg-background p-3 transition-colors hover:bg-muted/50"
@@ -309,7 +310,7 @@ export default function SearchPage() {
                     </div>
                 )}
 
-                {query && !loading && results.length === 0 && (
+                {query && !loadingText && textResults.length === 0 && (
                     <p className="text-sm text-muted-foreground">Aucun résultat trouvé.</p>
                 )}
                 </CardContent>
@@ -484,7 +485,7 @@ export default function SearchPage() {
                         {/* BOUTON RECHERCHE */}
                         <div className="flex justify-end">
                             <Button
-                            onClick={handleSearch}
+                            onClick={handleImageSearch}
                             disabled={files.length === 0 || loadingSearch}
                             className="flex items-center gap-2"
                             >
@@ -510,14 +511,14 @@ export default function SearchPage() {
                         )}
 
                         {/* RÉSULTATS RECHERCHE */}
-                        {results.length > 0 && (
+                        {imageResults.length > 0 && (
                             <div className="space-y-3 pt-4 border-t">
                             <h3 className="text-lg font-semibold flex items-center gap-2">
                                 <Search className="h-4 w-4 text-indigo-600" />
                                 Résultats similaires
                             </h3>
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {results.map((r, idx) => (
+                                {imageResults.map((r, idx) => (
                                 <Card key={idx} className="border-slate-200">
                                     <CardContent className="p-4 space-y-1">
                                         <p className="font-medium">{r.nom}</p>

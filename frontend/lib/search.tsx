@@ -1,3 +1,5 @@
+import type { ComposantRechercheItem } from "@/types/type-composant";
+
 export async function rechercheTexte(query: string) {
     const res = await fetch("/api/search/text", {
         method: "POST",
