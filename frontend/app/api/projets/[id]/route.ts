@@ -37,7 +37,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const id_projet = Number(params.id);
@@ -52,7 +52,7 @@ export async function PUT(
     const projet_update = await request.json();
 
     const response = await fetch(
-      `${process.env.API_BASE_URL}/projets/${id_projet}`,
+      `${API_BASE_URL}/projets/${id_projet}`,
       {
         method: "PUT",
         headers: {

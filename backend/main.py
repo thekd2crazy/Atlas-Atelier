@@ -374,14 +374,19 @@ def delete_projet_bom(id_projet: int ,id_composant: int, db: Session = Depends(g
     #Vérifie si le projet est modifiable
     projet_modif_validation(projet)
 
-    composant = db.query(models.Composant).filter(models.Composant.id_composant == id_composant).first()
-    if not composant:
-        raise HTTPException(status_code=404, detail="Composant non trouvé")
-
-    ligne_bom = db.query(models.BOM).filter(models.BOM.projet_id == id_projet, models.BOM.composant_id== id_composant).first()
+    ligne_bom = db.query(models.BOM).filter(
+        models.BOM.projet_id == id_projet,
+        models.BOM.composant_id == id_composant
+    ).first()
 
     if not ligne_bom:
         raise HTTPException(status_code=404, detail="Ligne de nomenclature introuvable")
+
+    composant = db.query(models.Composant).filter(
+        models.Composant.id_composant == id_composant
+    ).first()
+    if not composant:
+        raise HTTPException(status_code=404, detail="Composant non trouvé")
 
     #LOGIQUE MÉTIER : "Remboursement" du budget et restitution du stock
     projet.budget_consomme -= ligne_bom.cout_estime
@@ -496,7 +501,7 @@ def ingest():
             continue
 
         image_emb = sum(image_embs) / len(image_embs)
-        desc = f"{item.nom} {item.categorie}"
+        desc = f"{item.nom}{item.categorie}"
 
         emb = (image_emb + embed_text(desc)) / 2
 
