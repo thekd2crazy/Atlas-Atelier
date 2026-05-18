@@ -51,7 +51,7 @@ export default function StockPage () {
     }, []);
 
     
-    
+
              
 // Systeme de filtrage : 
     // Configuration des categories 
@@ -204,13 +204,13 @@ export default function StockPage () {
                         <div className="flex items-center gap-4">
                             <div className="flex-1">
                                 <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                                <Input
-                                    placeholder="Rechercher par nom, email, entreprise..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10"
-                                />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                                    <Input
+                                        placeholder="Rechercher par nom, référence, ..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -270,7 +270,7 @@ export default function StockPage () {
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                         <FaServicestack className="h-4 w-4 text-muted-foreground" />
-                                                        <div className="font-medium">{c.nom}</div>
+                                                        <div className="font-medium">{c.nom.split("/")[0].trim()}</div>
                                                         </div>
                                                     </TableCell>
 
@@ -318,7 +318,7 @@ export default function StockPage () {
                                                     <TableCell>
                                                         {c.photo_url ? (
                                                         <img
-                                                            src={c.photo_url}
+                                                            src={c.photo_url.split(",")[0].trim()} // Enlève les paramètres de l'URL si présents
                                                             alt={c.nom}
                                                             className="h-10 w-10 object-cover rounded"
                                                         />
@@ -455,151 +455,151 @@ export default function StockPage () {
                     </DialogHeader>
 
                     {currentComposant && (
-                    <form
-                        onSubmit={async (e) => {
-                        e.preventDefault();
+                        <form
+                            onSubmit={async (e) => {
+                            e.preventDefault();
 
-                        // Met à jour le composant (via API / server action)
-                        // Ici, tu peux appeler par exemple:
-                        try {
-                            const updated = await UpdateComposant(
-                            currentComposant.id_composant,
-                            currentComposant
-                            );
+                            // Met à jour le composant (via API / server action)
+                            // Ici, tu peux appeler par exemple:
+                            try {
+                                const updated = await UpdateComposant(
+                                currentComposant.id_composant,
+                                currentComposant
+                                );
 
-                            // 1. Mettez à jour localment les componsants modifiés
+                                // 1. Mettez à jour localment les componsants modifiés
 
-                            setComponents((prev) =>
-                            prev.map((c) => (c.id_composant === updated.id_composant ? updated : c))
-                            );
+                                setComponents((prev) =>
+                                prev.map((c) => (c.id_composant === updated.id_composant ? updated : c))
+                                );
 
-                            setEditOpen(false);
-                        } catch (err) {
-                            console.error("Échec de la mise à jour", err);
-                            alert("Impossible de mettre à jour le composant.");
-                        }      
-                        
-                        }}
-                        className="space-y-4 py-2"
-                    >
-                        <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-nom">Nom</Label>
+                                setEditOpen(false);
+                            } catch (err) {
+                                console.error("Échec de la mise à jour", err);
+                                alert("Impossible de mettre à jour le composant.");
+                            }      
+                            
+                            }}
+                            className="space-y-4 py-2"
+                        >
+                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-nom">Nom</Label>
+                                <Input
+                                id="edit-nom"
+                                value={currentComposant.nom}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    nom: e.target.value,
+                                    })
+                                }
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-reference">Référence</Label>
+                                <Input
+                                id="edit-reference"
+                                value={currentComposant.reference}
+                                onChange={(e) =>
+                                    setCurrentComposant({
+                                    ...currentComposant,
+                                    reference: e.target.value,
+                                    })
+                                }
+                                />
+                            </div>
+                            </div>
+
+                            <div className="space-y-2">
+                            <Label htmlFor="edit-categorie">Catégorie</Label>
                             <Input
-                            id="edit-nom"
-                            value={currentComposant.nom}
-                            onChange={(e) =>
+                                id="edit-categorie"
+                                value={currentComposant.categorie}
+                                onChange={(e) =>
                                 setCurrentComposant({
-                                ...currentComposant,
-                                nom: e.target.value,
+                                    ...currentComposant,
+                                    categorie: e.target.value,
                                 })
-                            }
+                                }
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-reference">Référence</Label>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-prix">Prix (€)</Label>
+                                    <Input
+                                    id="edit-prix"
+                                    type="number"
+                                    step="0.01"
+                                    value={currentComposant.prix || ""}
+                                    onChange={(e) =>
+                                        setCurrentComposant({
+                                        ...currentComposant,
+                                        prix: parseFloat(e.target.value) || 0,
+                                        })
+                                    }
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-quantite">Quantité</Label>
+                                    <Input
+                                    id="edit-quantite"
+                                    type="number"
+                                    value={currentComposant.quantite || ""}
+                                    onChange={(e) =>
+                                        setCurrentComposant({
+                                        ...currentComposant,
+                                        quantite: parseInt(e.target.value, 10) || 0,
+                                        })
+                                    }
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-emplacement">Emplacement</Label>
+                                    <Input
+                                    id="edit-emplacement"
+                                    value={currentComposant.emplacement || ""}
+                                    onChange={(e) =>
+                                        setCurrentComposant({
+                                        ...currentComposant,
+                                        emplacement: e.target.value,
+                                        })
+                                    }
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                            <Label htmlFor="edit-photo_url">URL de la photo</Label>
                             <Input
-                            id="edit-reference"
-                            value={currentComposant.reference}
-                            onChange={(e) =>
+                                id="edit-photo_url"
+                                type="url"
+                                value={currentComposant.photo_url || ""}
+                                onChange={(e) =>
                                 setCurrentComposant({
-                                ...currentComposant,
-                                reference: e.target.value,
+                                    ...currentComposant,
+                                    photo_url: e.target.value,
                                 })
-                            }
+                                }
                             />
-                        </div>
-                        </div>
+                            </div>
 
-                        <div className="space-y-2">
-                        <Label htmlFor="edit-categorie">Catégorie</Label>
-                        <Input
-                            id="edit-categorie"
-                            value={currentComposant.categorie}
-                            onChange={(e) =>
-                            setCurrentComposant({
-                                ...currentComposant,
-                                categorie: e.target.value,
-                            })
-                            }
-                        />
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-prix">Prix (€)</Label>
-                                <Input
-                                id="edit-prix"
-                                type="number"
-                                step="0.01"
-                                value={currentComposant.prix || ""}
-                                onChange={(e) =>
-                                    setCurrentComposant({
-                                    ...currentComposant,
-                                    prix: parseFloat(e.target.value) || 0,
-                                    })
-                                }
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-quantite">Quantité</Label>
-                                <Input
-                                id="edit-quantite"
-                                type="number"
-                                value={currentComposant.quantite || ""}
-                                onChange={(e) =>
-                                    setCurrentComposant({
-                                    ...currentComposant,
-                                    quantite: parseInt(e.target.value, 10) || 0,
-                                    })
-                                }
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-emplacement">Emplacement</Label>
-                                <Input
-                                id="edit-emplacement"
-                                value={currentComposant.emplacement || ""}
-                                onChange={(e) =>
-                                    setCurrentComposant({
-                                    ...currentComposant,
-                                    emplacement: e.target.value,
-                                    })
-                                }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                        <Label htmlFor="edit-photo_url">URL de la photo</Label>
-                        <Input
-                            id="edit-photo_url"
-                            type="url"
-                            value={currentComposant.photo_url || ""}
-                            onChange={(e) =>
-                            setCurrentComposant({
-                                ...currentComposant,
-                                photo_url: e.target.value,
-                            })
-                            }
-                        />
-                        </div>
-
-                        <DialogFooter className="flex items-center ">
-                            <div className="mx-2">
-                                <Button type="submit" className="w-auto">
-                                    <FaSave size={16}/>
-                                    Save
-                                </Button>
-                            </div>
-                            <div className="mx-">
-                                <Button type="button" className="w-auto" onClick={handleDelete}>
-                                    <FaTrash size={16}/>
-                                    Delete
-                                </Button>
-                            </div>
-                        </DialogFooter>
-                    </form>
+                            <DialogFooter className="flex items-center ">
+                                <div className="mx-2">
+                                    <Button type="submit" className="w-auto">
+                                        <FaSave size={16}/>
+                                        Save
+                                    </Button>
+                                </div>
+                                <div className="mx-">
+                                    <Button type="button" className="w-auto" onClick={handleDelete}>
+                                        <FaTrash size={16}/>
+                                        Delete
+                                    </Button>
+                                </div>
+                            </DialogFooter>
+                        </form>
                     )}
                 </DialogContent>
                 </Dialog>                 
