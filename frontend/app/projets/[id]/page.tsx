@@ -368,9 +368,17 @@ export default function ProjetDetailPage ({ params }: Props) {
         setLoading(true);
         setError("");
 
-        const response = await updateProjetBOM(idProjet, id_composant, qty);
+        await updateProjetBOM(idProjet, id_composant, qty);
+
+        setLineBOM((prev) =>
+            prev.map((l) =>
+                l.composant_id === id_composant ? { ...l, qte_requise: qty } : l
+            )
+        );
+        await loadProjet();
 
         setOpen(false);
+        setFormUpdate(undefined);
         } catch (e: any) {
         setError(e?.message || "Erreur update BOM");
         } finally {
@@ -525,7 +533,11 @@ export default function ProjetDetailPage ({ params }: Props) {
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        onClick={() => {setFormUpdate({composant_id: c.composant_id, qte_requise: c.qte_requise}), setOpen(true)}}
+                                                        onClick={() => {
+                                                            setFormUpdate({ composant_id: c.composant_id, qte_requise: Number(c.qte_requise) });
+                                                            setError(null);
+                                                            setOpen(true);
+                                                        }}
                                                     >
                                                         <FaEdit size={12} />
                                                     </Button>
@@ -678,10 +690,6 @@ export default function ProjetDetailPage ({ params }: Props) {
             {/* Modal d'édition de la quantité dans le BOM (à implémenter) */}
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline">Modifier la quantité</Button>
-                </DialogTrigger>
-
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Mettre à jour le BOM</DialogTitle>

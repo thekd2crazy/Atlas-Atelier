@@ -274,12 +274,18 @@ export default function ProjetsDashboard() {
       setLoading(true);
 
       try {
-        await updateProjet(projet.id_projet, {
+        const updated = await updateProjet(projet.id_projet, {
           ...formEdit,
           budget_alloue: Number(formEdit.budget_alloue),
         });
 
+        setProjets((prev) =>
+          prev.map((p) => (p.id_projet === projet.id_projet ? updated : p))
+        );
+
+        toast.success(`Projet "${updated.nom}" mis à jour`);
         setOpenEdit(false);
+        setProjet(null);
       } catch (err) {
         console.error(err);
         toast.error("Impossible de mettre à jour le projet");
@@ -461,10 +467,15 @@ export default function ProjetsDashboard() {
                       </div>
 
                       {/* RIGHT: action */}
-                      <button className="inline-flex items-center justify-center p-1 rounded-md text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 transition" onClick={() => {
-                        setProjet(projet)
-                        setOpenEdit(true)
-                      }}>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center p-1 rounded-md text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjet(projet);
+                          setOpenEdit(true);
+                        }}
+                      >
                         <FaEdit className="h-3.5 w-3.5" />
                       </button>
 
@@ -750,7 +761,7 @@ export default function ProjetsDashboard() {
               <Textarea
                 id="description"
                 name="description"
-                value={formEdit.description}
+                value={formEdit.description ?? ""}
                 onChange={handleChangeEdit}
                 placeholder="Description"
                 className="min-h-28 rounded-xl resize-none"

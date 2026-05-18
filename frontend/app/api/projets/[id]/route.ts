@@ -40,9 +40,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_projet = Number(params.id);
+    const { id } = await params;
+    const id_projet = Number(id);
 
-    if (isNaN(id_projet)) {
+    if (isNaN(id_projet) || id_projet <= 0) {
       return NextResponse.json(
         { error: "ID de projet invalide" },
         { status: 400 }
