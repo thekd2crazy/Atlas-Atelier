@@ -501,7 +501,7 @@ def ingest():
             continue
 
         image_emb = sum(image_embs) / len(image_embs)
-        desc = f"{item.nom} {item.categorie}"
+        desc = f"{item.nom}{item.categorie}"
 
         emb = (image_emb + embed_text(desc)) / 2
 
